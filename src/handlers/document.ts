@@ -14,6 +14,7 @@ import {
   mkdirSync,
   readdirSync,
   rmSync,
+  type Dirent,
 } from "fs";
 import { resolve, join } from "path";
 import { execSync } from "child_process";
@@ -185,15 +186,15 @@ async function extractArchive(
 function buildFileTreeSync(dir: string): string[] {
   const entries: string[] = [];
   function walk(current: string, prefix: string) {
-    let items: string[];
+    let items: Dirent[];
     try {
-      items = readdirSync(current, { withFileTypes: true }) as any;
+      items = readdirSync(current, { withFileTypes: true });
     } catch {
       return;
     }
     for (const item of items) {
       const relPath = prefix ? `${prefix}/${item.name}` : item.name;
-      if ((item as any).isDirectory()) {
+      if (item.isDirectory()) {
         walk(join(current, item.name), relPath);
       } else {
         entries.push(relPath);

@@ -75,7 +75,7 @@ export interface PendingMediaGroup {
   ctx: Context;
   caption?: string;
   statusMsg?: Message;
-  timeout: Timer;
+  timeout: NodeJS.Timeout;
 }
 
 // Bot context with optional message

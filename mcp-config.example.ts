@@ -10,9 +10,10 @@
 
 import { homedir } from "os";
 import { dirname } from "path";
+import { fileURLToPath } from "url";
 
 const HOME = homedir();
-const REPO_ROOT = dirname(import.meta.path);
+const REPO_ROOT = dirname(fileURLToPath(import.meta.url));
 
 export const MCP_SERVERS: Record<
   string,

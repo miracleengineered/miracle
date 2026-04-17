@@ -19,6 +19,15 @@ import {
   STREAMING_THROTTLE_MS,
   WORKING_DIR,
 } from "./config";
+import { environmentForClaudeChild } from "./secrets";
+import {
+  candidatesForEvent,
+  candidateForOuterError,
+  hasFired,
+  markFired,
+  nextTurnId,
+  resetAllSignatureState,
+} from "./signatures";
 import { formatToolStatus } from "./formatting";
 import { checkPendingAskUserRequests } from "./handlers/streaming";
 import type {
@@ -263,6 +272,28 @@ class ClaudeSession {
 
     const isNewSession = !this.isActive;
 
+    // Signature hooks (step 9): reset dedup/pending state on new session; allocate a turn id.
+    if (isNewSession) {
+      resetAllSignatureState();
+    }
+    const sigTurnId = nextTurnId();
+
+    // sendSignature(phrase, dedupKey): module-level dedup; sends to Telegram via ctx.api.
+    // Closure captures chatId and ctx for the duration of this turn. No hardcoded chat IDs.
+    const sendSignature = async (
+      phrase: string,
+      dedupKey: string,
+    ): Promise<void> => {
+      if (hasFired(dedupKey)) return;
+      markFired(dedupKey);
+      if (!chatId || !ctx?.api) return;
+      try {
+        await ctx.api.sendMessage(chatId, phrase);
+      } catch (err) {
+        console.warn(`Signature "${phrase}" send failed:`, err);
+      }
+    };
+
     // Inject current date/time at session start so Claude doesn't need to call a tool for it
     let messageToSend = message;
     if (isNewSession) {
@@ -335,8 +366,12 @@ class ClaudeSession {
       throw new Error("Query cancelled");
     }
 
-    // Spawn CLI process
-    const env = { ...process.env };
+    // Spawn CLI process.
+    // Use environmentForClaudeChild() so Keychain-sourced secrets (incl.
+    // ANTHROPIC_API_KEY) are stripped before reaching the child. The key is
+    // excluded to force Claude CLI subscription auth; leaking it would switch
+    // the CLI to API-key billing silently.
+    const env = environmentForClaudeChild();
     delete env.CLAUDECODE; // Prevent "nested session" error
 
     this.childProcess = spawn(CLAUDE_CLI_PATH, args, {
@@ -405,6 +440,18 @@ class ClaudeSession {
           this.sessionId = event.session_id;
           console.log(`GOT session_id: ${this.sessionId!.slice(0, 8)}...`);
           this.saveSession();
+        }
+
+        // ── Signature hooks (step 9) ──
+        // Run first so tool_use events are tracked before the existing logic
+        // consumes them, and the result event fires Delivered/Blocked before
+        // any throw below.
+        for (const sig of candidatesForEvent(
+          event,
+          this.sessionId,
+          sigTurnId,
+        )) {
+          await sendSignature(sig.phrase, sig.dedupKey);
         }
 
         // ── Assistant messages (text, tools, thinking) ──
@@ -600,6 +647,12 @@ class ClaudeSession {
         );
       }
     } catch (error) {
+      // Signature hook (step 9): uncaught stream/exit/parse error = outer blocked.
+      {
+        const sig = candidateForOuterError(this.sessionId, sigTurnId);
+        await sendSignature(sig.phrase, sig.dedupKey);
+      }
+
       const errorStr = String(error).toLowerCase();
       const isCleanupError =
         errorStr.includes("cancel") || errorStr.includes("abort");

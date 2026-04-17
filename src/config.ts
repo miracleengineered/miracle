@@ -5,7 +5,7 @@
  * Adapted for Node.js on Windows.
  */
 
-import "dotenv/config";
+import { loadSecretsFromKeychain } from "./secrets";
 import { homedir, tmpdir } from "os";
 import { resolve, dirname } from "path";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
@@ -14,10 +14,10 @@ import type { McpServerConfig } from "./types";
 
 // ============== Core Configuration ==============
 
-export const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-export const ALLOWED_USERS: number[] = (
-  process.env.TELEGRAM_ALLOWED_USERS || ""
-)
+const SECRETS = loadSecretsFromKeychain();
+
+export const TELEGRAM_TOKEN = SECRETS.TELEGRAM_BOT_TOKEN;
+export const ALLOWED_USERS: number[] = SECRETS.TELEGRAM_ALLOWED_USERS
   .split(",")
   .filter((x) => x.trim())
   .map((x) => parseInt(x.trim(), 10))
@@ -25,7 +25,7 @@ export const ALLOWED_USERS: number[] = (
 
 const HOME = homedir();
 export const WORKING_DIR = process.env.CLAUDE_WORKING_DIR || HOME;
-export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+export const OPENAI_API_KEY = SECRETS.OPENAI_API_KEY;
 
 // ============== Claude CLI Path ==============
 
