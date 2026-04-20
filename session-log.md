@@ -1,0 +1,11 @@
+## C1 delivery — 2026-04-20T23:19:27Z
+- Files added: [src/orchestrator/index.ts, src/orchestrator/decompose.ts, src/orchestrator/synthesize.ts, src/orchestrator/types.ts, src/orchestrator/decompose.test.ts, src/orchestrator/synthesize.test.ts, src/orchestrator/orchestrator.test.ts]
+- tsc --noEmit: pass
+- npm test: pass (7 tests added, 105 total)
+- Key design decisions:
+- Used a rule-based decomposition heuristic with numbered lists taking precedence over `and` / `then` splitting, matching the Phase 2 scope without introducing model-driven planning.
+- Wrote a `planSnapshot` to the parent job before child creation, storing the original ask, strategy name, and ordered subtask prompts for context compaction before fan-out.
+- Kept the orchestrator fully behind `NotebookClient` injection, defaulting to `createNotebookClient()` and never reaching into the in-memory implementation directly.
+- Consumed `observeCompletions(parentId)` exactly once per orchestrator run, collecting terminal child jobs until all planned children finished to stay compatible with the stub's single-observer limitation.
+- Synthesized the final output in planned subtask order with simple section headers and status lines, while surfacing failed child results instead of attempting conflict resolution.
+- Ready for CC review and merge into tier-3
