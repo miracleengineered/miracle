@@ -1,6 +1,9 @@
 # dependencies (bun install)
 node_modules
 
+# Tier 3 standardizes on bun. Block accidental npm lockfile re-introduction.
+package-lock.json
+
 # output
 out
 dist
@@ -45,3 +48,7 @@ mcp-config.ts
 # Misrouted autodoc vault path (bot's vault config treated Windows-style D: as relative dir)
 # Rescued notes moved to ~/obsidian-misroute-recovery/
 D:/
+
+# Tier 3: per-job worker worktrees (created at runtime by C2's lifecycle API).
+# See INTERFACES.md → "Worktree path format".
+worktrees/
