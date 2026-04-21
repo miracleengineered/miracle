@@ -64,7 +64,7 @@ CC then:
 - Real SQLite notebook implementation (Phase 3 / C3)
 - HTTP webhook hooks (Phase 3 / C5)
 - Model routing (Phase 3 / C6)
-- Conflict resolution (Phase 3 / C4)
+- Hook-to-job correlation (Phase 4 / C4)
 - Bot entry point integration with TIER_3_ENABLED flag (Phase 5 / C8)
 
 ---
