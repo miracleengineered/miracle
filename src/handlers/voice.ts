@@ -7,6 +7,8 @@ import { unlinkSync, writeFileSync } from "fs";
 import { session } from "../session";
 import { ALLOWED_USERS, TEMP_DIR, TRANSCRIPTION_AVAILABLE } from "../config";
 import { isAuthorized, rateLimiter } from "../security";
+import type { Tier3Runtime } from "../tier3/runtime";
+import type { StartWorker } from "../orchestrator/types";
 import {
   auditLog,
   auditLogRateLimit,
@@ -146,6 +148,117 @@ export async function handleVoice(ctx: Context): Promise<void> {
     stopProcessing();
     typing.stop();
 
+    // Clean up voice file
+    if (voicePath) {
+      try {
+        unlinkSync(voicePath);
+      } catch (error) {
+        console.debug("Failed to delete voice file:", error);
+      }
+    }
+  }
+}
+
+/**
+ * Handle incoming voice messages — Tier 3 path.
+ *
+ * Mirrors handleVoice's download + transcribe flow, then routes the
+ * transcript string through runtime.runJob instead of the MVP
+ * ClaudeSession. No streaming callbacks, no autodoc, no MVP-session
+ * singleton state (startProcessing, conversationTitle,
+ * consumeInterruptFlag are all dropped).
+ */
+export async function handleVoiceTier3(
+  ctx: Context,
+  runtime: Tier3Runtime,
+  startWorker: StartWorker,
+): Promise<void> {
+  const userId = ctx.from?.id;
+  const username = ctx.from?.username || "unknown";
+  const chatId = ctx.chat?.id;
+  const voice = ctx.message?.voice;
+
+  if (!userId || !voice || !chatId) {
+    return;
+  }
+
+  // 1. Authorization check
+  if (!isAuthorized(userId, ALLOWED_USERS)) {
+    await ctx.reply("Unauthorized. Contact the bot owner for access.");
+    return;
+  }
+
+  // 2. Check if transcription is available
+  if (!TRANSCRIPTION_AVAILABLE) {
+    await ctx.reply(
+      "Voice transcription is not configured. Set OPENAI_API_KEY in .env"
+    );
+    return;
+  }
+
+  // 3. Rate limit check
+  const [allowed, retryAfter] = rateLimiter.check(userId);
+  if (!allowed) {
+    await auditLogRateLimit(userId, username, retryAfter!);
+    await ctx.reply(
+      `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
+    );
+    return;
+  }
+
+  let voicePath: string | null = null;
+
+  try {
+    // 4. Download voice file
+    const file = await ctx.getFile();
+    const timestamp = Date.now();
+    voicePath = `${TEMP_DIR}/voice_${timestamp}.ogg`;
+
+    const downloadRes = await fetch(
+      `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+    );
+    const buffer = await downloadRes.arrayBuffer();
+    writeFileSync(voicePath, Buffer.from(buffer));
+
+    // 5. Transcribe
+    const statusMsg = await ctx.reply("🎤 Transcribing...");
+
+    const transcript = await transcribeVoice(voicePath);
+    if (!transcript) {
+      await ctx.api.editMessageText(
+        chatId,
+        statusMsg.message_id,
+        "❌ Transcription failed."
+      );
+      return;
+    }
+
+    // 6. Show transcript (truncate display if needed - full transcript still sent to runJob)
+    const maxDisplay = 4000; // Leave room for 🎤 "" wrapper within 4096 limit
+    const displayTranscript =
+      transcript.length > maxDisplay
+        ? transcript.slice(0, maxDisplay) + "…"
+        : transcript;
+    await ctx.api.editMessageText(
+      chatId,
+      statusMsg.message_id,
+      `🎤 "${displayTranscript}"`
+    );
+
+    // 7. Start typing heartbeat for the runJob call
+    const typing = startTypingIndicator(ctx);
+    try {
+      const result = await runtime.runJob(transcript, { startWorker });
+      await ctx.reply(result.output || "(no output)");
+      await auditLog(userId, username, "VOICE", transcript, result.output);
+    } catch (err) {
+      console.error("Tier 3 voice runJob failed:", err);
+      await ctx.reply("Something went wrong.");
+      await auditLog(userId, username, "VOICE", transcript, "[tier3 runJob failed]");
+    } finally {
+      typing.stop();
+    }
+  } finally {
     // Clean up voice file
     if (voicePath) {
       try {
