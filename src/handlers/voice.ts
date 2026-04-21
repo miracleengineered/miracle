@@ -14,8 +14,6 @@ import {
   startTypingIndicator,
 } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
-import { autoDocument, formatDocReply } from "../autodoc";
-import { escapeHtml } from "../formatting";
 
 /**
  * Handle incoming voice messages.
@@ -129,19 +127,6 @@ export async function handleVoice(ctx: Context): Promise<void> {
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
     } catch { /* already deleted */ }
-
-    // 12. Auto-document the response
-    try {
-      const docResult = await autoDocument(transcript, claudeResponse);
-      if (docResult) {
-        await ctx.reply(formatDocReply(docResult, escapeHtml), {
-          parse_mode: 'HTML',
-          disable_notification: true,
-        });
-      }
-    } catch (err) {
-      console.error("Auto-documentation failed:", err);
-    }
 
     // 13. Audit log
     await auditLog(userId, username, "VOICE", transcript, claudeResponse);

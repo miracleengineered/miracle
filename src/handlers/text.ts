@@ -13,9 +13,7 @@ import {
   startTypingIndicator,
 } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
-import { autoDocument, formatDocReply } from "../autodoc";
 import {
-  escapeHtml,
   extractGsdCommands,
   extractNumberedOptions,
   buildActionKeyboard,
@@ -109,27 +107,10 @@ export async function handleText(ctx: Context): Promise<void> {
       // 10. Audit log
       await auditLog(userId, username, "TEXT", message, response);
 
-      // 10b. Delete processing message before autodoc + context bar
+      // 10b. Delete processing message before context bar
       try {
         await ctx.api.deleteMessage(chatId, processingMsg.message_id);
       } catch { /* already deleted */ }
-
-      // 10c. Auto-document the response (skip for trivial/system responses)
-      const isAskUser = response.includes("[Waiting for user selection]");
-      const isContextLimit = response.includes("Context limit reached");
-      if (!isAskUser && !isContextLimit) {
-        try {
-          const docResult = await autoDocument(message, response);
-          if (docResult) {
-            await ctx.reply(formatDocReply(docResult, escapeHtml), {
-              parse_mode: 'HTML',
-              disable_notification: true,
-            });
-          }
-        } catch (err) {
-          console.error("Auto-documentation failed:", err);
-        }
-      }
 
       // 10d. Show context bar + action buttons
       {
