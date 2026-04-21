@@ -7,9 +7,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 bun run start      # Run the bot
 bun run dev        # Run with auto-reload (--watch)
+bun run test       # Run the vitest test suite
 bun run typecheck  # Run TypeScript type checking
 bun install        # Install dependencies
 ```
+
+**Do NOT use `bun test`** (bun's built-in test runner). This repo's
+tests are written for vitest and use vitest-specific APIs like
+`vi.waitFor`. Invoking `bun test` directly will fail with misleading
+errors such as `vi.waitFor is not a function`. The canonical runner
+is `bun run test`, which dispatches to `vitest run` per `package.json`.
+This gotcha was rediscovered during the 2026-04-21 rollback-tier3.sh
+integration test; documenting here so it doesn't keep getting found
+the same way.
 
 ## Architecture
 
