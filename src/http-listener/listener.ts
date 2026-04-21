@@ -42,6 +42,7 @@ export class ExpressHttpListener implements HttpListener {
       const server = this.app.listen(this.config.port, this.config.host, () => {
         server.off("error", reject);
         this.server = server;
+        console.log(`Tier 3 runtime listening on ${this.config.host}:${this.config.port}`);
         resolve();
       });
 
