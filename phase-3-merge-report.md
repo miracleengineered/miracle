@@ -35,3 +35,17 @@ Merge order: C3 → C5 → C6.
 - **scope_observations:** new src/http-listener/listener.ts + listener.test.ts as expected; package.json adds express + @types/express; InMemoryNotebookClient.appendHookEvent parameter type narrower than interface (omits receivedAt) — runtime-correct via spread, flagged for Phase 4+ cleanup.
 
 ---
+
+## C6 — Model routing (orchestrator dispatch integration)
+
+- **merge_commit:** 6b21897485dcdbbb3990be4306e7b598ec71402d
+- **timestamp:** 2026-04-21T03:21:59Z
+- **tsc:** pass (exit 0)
+- **npm_test:** pass (exit 0), 133 tests total
+- **sub-branch head merged:** a325ce2
+- **merge_base:** 3402a60 (C6 forked from original pre-kickoff; 513e363 schema-correction landed only on trunk)
+- **conflict:** none — clean `ort` merge across 5 files, all in expected scope
+- **install_note:** no new deps; `bun install` reported "no changes" across 213 installs / 259 packages
+- **scope_observations:** routing-table.json populated with both production kinds (orchestrator → opus, orchestrator-subtask → sonnet); orchestrator dispatch wired via src/orchestrator/index.ts (+3) and types.ts (+3) with 50 new orchestrator.test.ts lines; no touches to C3's notebook client or C5's http-listener surface.
+
+---
