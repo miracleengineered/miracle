@@ -33,7 +33,7 @@ outside that module.
 ## Branch naming
 - tier-3-c1, tier-3-c2, tier-3-c7 — per-surface sub-branches
 - tier-3 — integration branch, merged into by CC after validation
-- main — final target, merged into only at Phase 5 cutover
+- miracle-mvp — live production branch; Phase 5 cutover merges `tier-3` into it
 
 ## Test runner
 vitest 4.0.18 (config at vitest.config.ts). Include pattern covers both
@@ -66,7 +66,7 @@ CC then:
 - Model routing (Phase 3 / C6)
 - Hook-to-job correlation (Phase 4 / C4)
 - Integration and end-to-end testing (Phase 4 / C8)
-- TIER_3_ENABLED flip and `main` merge (Phase 5 cutover)
+- TIER_3_ENABLED flip and `miracle-mvp` merge (Phase 5 cutover)
 
 ---
 
@@ -189,24 +189,35 @@ sub-branch does NOT scope correlation.
 
 ### CC integration
 
-Uses CC's native HTTP hook transport. Registration shape (installed by
-C8, not C5) — this goes in `~/miracle-workspace/.claude/settings.json`:
+Uses CC's native HTTP hook transport. Registration lives in
+`~/miracle-workspace/.claude/settings.json` using CC 2.x's
+nested-by-event-name schema — event names map to matcher arrays,
+each matcher carrying its own `"hooks"` list of handlers:
 
 ```jsonc
 {
-  "hooks": [
-    {
-      "type": "http",
-      "url": "http://127.0.0.1:8787/hook"
-      // "async": true is an open question — C5 sub-branch evaluates;
-      // default to sync if uncertain.
-    }
-  ]
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hook" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hook" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hook" }] }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hook" }] }
+    ]
+  }
 }
 ```
 
-No command-hook wrapping. The pre-kickoff commit does NOT modify
-`~/miracle-workspace/.claude/settings.json`; that is C8 install work.
+Hooks are synchronous by default (CC blocks until the listener
+returns 200); the C8 e2e exercised this shape on a real `claude -p`
+run. No command-hook wrapping. Installation is Phase 5 cutover work
+per the D5 deferral — back up any existing file to
+`settings.json.pre-tier-3-backup` before writing.
 
 ### Scaffold
 
@@ -327,9 +338,10 @@ correlate the other two.
 ### Out of scope for C4
 
 - Any C8 integration work: listener wiring into a run configuration,
-  hook registration in `~/miracle-workspace/.claude/settings.json`,
   `SqliteNotebookClient.appendHookEvent` real implementation, e2e
-  test harness.
+  test harness. (Hook registration in
+  `~/miracle-workspace/.claude/settings.json` moved to Phase 5
+  cutover per the D5 deferral.)
 - Tightening `InMemoryNotebookClient.appendHookEvent` parameter type
   (flagged as cleanup in `phase-3-merge-report.md:35`; lands in C8).
 - Production `TIER_3_ENABLED` flag changes (Phase 5 cutover).
@@ -400,14 +412,14 @@ contract.
 ### Out of scope for C8
 
 - `TIER_3_ENABLED` flag flip (Phase 5 cutover).
-- Merge `tier-3` → `main` (Phase 5 cutover).
+- Merge `tier-3` → `miracle-mvp` (Phase 5 cutover).
 - Any write to the production DB at `~/.miracle/queue.db` (C8 uses
   `~/.miracle/tier-3-test.db`).
 - Modifying any launchd job.
 - Modifying `~/miracle-workspace/CLAUDE.md` or
   `~/miracle-workspace/.claude/agents/`.
-- Any file under `~/miracle-workspace/` other than the `"hooks"`
-  array in `settings.json` (backed up first).
+- Any file under `~/miracle-workspace/` (hook registration moved to
+  Phase 5 cutover per the D5 deferral).
 
 ### Hook registration
 
@@ -459,23 +471,30 @@ Gate the test behind `E2E=1` using `process.env.E2E === "1"` so
   wiring + hook registration + e2e test. Forks from `tier-3` after
   `tier-3-c4` merges.
 - Phase 4 seals at tag `phase-4-complete` after `tier-3-c8` merges
-  green. Phase 5 cutover (flag flip + `main` merge) begins only after
+  green. Phase 5 cutover (flag flip + `miracle-mvp` merge) begins only after
   Phase 4 seals.
 
 ---
 
 # Phase 5 — Cutover
 
-Phase 5 turns Tier 3 on in production. It is a deliberately narrow
-phase: no implementation work, no new components, no spec changes.
-Any readiness work (smoke tests, operator docs, rollback plan) lands
-in Phase 4 before its seal.
+Phase 5 turns Tier 3 on in production. Scope spans a small amount
+of implementation, pre-cutover configuration, the cutover itself,
+and post-cutover verification.
 
 Phase 5 scope:
 
-- Flip `TIER_3_ENABLED` from `"false"` to `"true"` in the live config
-  read by `src/config/env.ts`.
-- Merge `tier-3` branch into `main`.
-- Tag `phase-5-complete` on `main` at the merge commit.
+1. Wire `createTier3Runtime()` into `bot/src/index.ts` behind the `TIER_3_ENABLED` check.
+2. Add `PRAGMA journal_mode = WAL` and `PRAGMA busy_timeout = 5000` to `SqliteNotebookClient`.
+3. Add a startup log line in `Tier3Runtime` so cutover confirms listener bind.
+4. Back up `~/miracle-workspace/.claude/settings.json` to `.pre-tier-3-backup` (if present).
+5. Create `~/miracle-workspace/.claude/settings.json` with nested hook registration at `http://127.0.0.1:8787/hook`.
+6. Merge `tier-3` → `miracle-mvp` (NOT `main` — the live bot runs from `miracle-mvp`) with a standard merge commit.
+7. Add `<key>TIER_3_ENABLED</key><string>true</string>` to `~/Library/LaunchAgents/com.miracle.bot.plist`.
+8. `launchctl kickstart -k gui/$(id -u)/com.miracle.bot` to restart the live bot.
+9. Run the 30-second smoke test: `lsof` on 8787, `~/.miracle/queue.db` created, a test Telegram round-trip produces correlated `hook_events`.
+10. Tag `phase-5-complete` on `miracle-mvp` at the merge commit.
 
-Phase 5 is out of scope until Phase 4 seals at `phase-4-complete`.
+Phase 5 starts only after the coordination-point cleanup commit
+(this one) has landed and `phase-4-complete` has been tagged on
+`tier-3`.
