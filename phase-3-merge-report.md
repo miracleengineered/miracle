@@ -49,3 +49,22 @@ Merge order: C3 → C5 → C6.
 - **scope_observations:** routing-table.json populated with both production kinds (orchestrator → opus, orchestrator-subtask → sonnet); orchestrator dispatch wired via src/orchestrator/index.ts (+3) and types.ts (+3) with 50 new orchestrator.test.ts lines; no touches to C3's notebook client or C5's http-listener surface.
 
 ---
+
+## Coordination-point cleanup
+
+- **timestamp:** 2026-04-21T03:36:01Z
+
+### Coordination point 2 — InMemory cancelled-status parity (FIXED)
+
+- **commit:** e8b3ebd56bc2f4be0bf2124f07eaa221145d8f58
+- **summary:** InMemoryNotebookClient.updateStatus and .observeCompletions previously hardcoded `{completed, failed}` as terminal, predating Phase 3's addition of `cancelled` to JobStatus. Routed both sites through the existing file-scope `isTerminalStatus` helper (src/notebook/client.ts:~454), which SqliteNotebookClient already uses. Two-line change; zero new imports.
+- **test coverage:** added sibling cancelled-case test mirroring existing completed/failed coverage (src/notebook/client.test.ts), test count 134.
+
+### Coordination point 3 — appendHookEvent? interface tightening (DEFERRED, corrected rationale)
+
+- **decision:** kept OPTIONAL on NotebookClient interface. Deferred any tightening indefinitely, not just to Phase 4+.
+- **corrected rationale (supersedes C5 merge report note):** The C5 merge report claimed tightening requires "hook-events schema work" — that claim was stale. The `hook_events` table is created at SqliteNotebookClient construction time via `this.db.exec(MIGRATION_SQL)` (migrations/001_phase3_init.sql line 26), so the schema is live. The actual reason to leave the interface optional is architectural: the current optional-at-interface + `Required<Pick<NotebookClient, "appendHookEvent">>`-at-caller pattern (see src/http-listener/listener.ts line 8, `HookEventNotebookClient`) is correct design. It precisely expresses "not every notebook backend supports hooks; callers that need hooks narrow at their boundary." Tightening would force every backend to declare a method it may not need, or add throw-stubs (strictly worse — converts compile-time errors to runtime errors).
+- **current state:** only one production call site (ExpressHttpListener at src/http-listener/listener.ts:75), already type-narrowed via HookEventNotebookClient. No silent no-op risk. A future integration wiring a Sqlite backend to ExpressHttpListener will fail at compile time, forcing the integrator to add a proper Sqlite implementation (with tests) at that point — which is the right place for that work, not Phase 3 cleanup.
+- **Phase 4+ note:** when Sqlite-to-hooks integration lands (C8 or later), implement appendHookEvent on SqliteNotebookClient as a real INSERT into hook_events (job_id NULL per current contract, correlation deferred per INTERFACES.md). Do not tighten the interface at that time either — the pattern stays optional.
+
+---
