@@ -1,20 +1,22 @@
 import { describe, it, expect } from "vitest";
 import { resolveModel } from "./resolveModel.js";
 
-// These tests run against the empty scaffolded routing table. C6's
-// sub-branch populates the table and adds lookup tests.
-
 describe("resolveModel", () => {
+  it("returns the routed default for orchestrator jobs", () => {
+    expect(resolveModel("orchestrator")).toBe("opus");
+  });
+
+  it("returns the routed default for orchestrator subtask jobs", () => {
+    expect(resolveModel("orchestrator-subtask")).toBe("sonnet");
+  });
+
   it("returns the override when one is provided, ignoring the table", () => {
-    expect(resolveModel("any-kind", "opus")).toBe("opus");
-    expect(resolveModel("another-kind", "sonnet")).toBe("sonnet");
-    expect(resolveModel("third-kind", "haiku")).toBe("haiku");
+    expect(resolveModel("orchestrator", "sonnet")).toBe("sonnet");
+    expect(resolveModel("orchestrator-subtask", "haiku")).toBe("haiku");
+    expect(resolveModel("unknown-kind", "opus")).toBe("opus");
   });
 
   it("throws 'unknown kind' when the kind is absent from the table and no override is given", () => {
-    expect(() => resolveModel("orchestrator")).toThrow(/unknown kind: orchestrator/);
-    expect(() => resolveModel("orchestrator-subtask")).toThrow(
-      /unknown kind: orchestrator-subtask/,
-    );
+    expect(() => resolveModel("unknown-kind")).toThrow(/unknown kind: unknown-kind/);
   });
 });

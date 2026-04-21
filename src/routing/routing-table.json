@@ -1,1 +1,8 @@
-{}
+{
+  "orchestrator": {
+    "default": "opus"
+  },
+  "orchestrator-subtask": {
+    "default": "sonnet"
+  }
+}
