@@ -1,4 +1,5 @@
 import type { JobStatus } from "../notebook/client.js";
+import type { ModelName } from "../types/phase3.js";
 
 export type TerminalSubtaskStatus = Extract<JobStatus, "completed" | "failed">;
 
@@ -35,6 +36,7 @@ export interface OrchestratorResult {
 export interface ParentJobPayload {
   kind: "orchestrator";
   ask: string;
+  model: ModelName;
 }
 
 export interface ChildJobPayload {
@@ -42,4 +44,5 @@ export interface ChildJobPayload {
   ask: string;
   index: number;
   parentAsk: string;
+  model: ModelName;
 }

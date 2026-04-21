@@ -1,4 +1,5 @@
 import { createNotebookClient, type Job, type NotebookClient } from "../notebook/client.js";
+import { resolveModel } from "../routing/resolveModel.js";
 import { decomposeAsk } from "./decompose.js";
 import { synthesizeResults } from "./synthesize.js";
 import type {
@@ -56,6 +57,7 @@ export async function runOrchestrator(
   const parentPayload: ParentJobPayload = {
     kind: "orchestrator",
     ask: normalizedAsk,
+    model: resolveModel("orchestrator"),
   };
   const parentJob = client.createJob({ payload: parentPayload });
 
@@ -69,6 +71,7 @@ export async function runOrchestrator(
         ask: subtask.ask,
         index: subtask.index,
         parentAsk: normalizedAsk,
+        model: resolveModel("orchestrator-subtask"),
       };
       const job = client.createJob({
         parentId: parentJob.id,
