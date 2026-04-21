@@ -14,7 +14,7 @@ import type { Tier3Runtime } from "./tier3/runtime";
 import type { StartWorker } from "./orchestrator/types";
 import { environmentForClaudeChild } from "./secrets";
 import { isAuthorized, rateLimiter } from "./security";
-import { auditLog, auditLogRateLimit } from "./utils";
+import { auditLog, auditLogRateLimit, startTypingIndicator } from "./utils";
 import { session } from "./session";
 import { unlinkSync, readFileSync, existsSync } from "fs";
 import {
@@ -127,7 +127,7 @@ if (tier3Runtime) {
       await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
       return;
     }
-    await ctx.replyWithChatAction("typing");
+    const typing = startTypingIndicator(ctx);
     try {
       const result = await runtime.runJob(message, { startWorker });
       await ctx.reply(result.output || "(no output)");
@@ -136,6 +136,8 @@ if (tier3Runtime) {
       console.error("Tier 3 runJob failed:", err);
       await ctx.reply("Something went wrong.");
       await auditLog(userId, username, "TEXT", message, "[tier3 runJob failed]");
+    } finally {
+      typing.stop();
     }
   });
 } else {
