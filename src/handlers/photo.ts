@@ -12,8 +12,6 @@ import { isAuthorized, rateLimiter } from "../security";
 import { auditLog, auditLogRateLimit, startTypingIndicator } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
 import { createMediaGroupBuffer, handleProcessingError } from "./media-group";
-import { autoDocument, formatDocReply } from "../autodoc";
-import { escapeHtml } from "../formatting";
 
 // Create photo-specific media group buffer
 const photoBuffer = createMediaGroupBuffer({
@@ -107,19 +105,6 @@ async function processPhotos(
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
     } catch { /* already deleted */ }
-
-    // Auto-document the response
-    try {
-      const docResult = await autoDocument(prompt, response);
-      if (docResult) {
-        await ctx.reply(formatDocReply(docResult, escapeHtml), {
-          parse_mode: 'HTML',
-          disable_notification: true,
-        });
-      }
-    } catch (err) {
-      console.error("Auto-documentation failed:", err);
-    }
 
     await auditLog(userId, username, "PHOTO", prompt, response);
   } catch (error) {

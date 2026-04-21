@@ -25,8 +25,6 @@ import { auditLog, auditLogRateLimit, startTypingIndicator } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
 import { createMediaGroupBuffer, handleProcessingError } from "./media-group";
 import { isAudioFile, processAudioFile } from "./audio";
-import { autoDocument, formatDocReply } from "../autodoc";
-import { escapeHtml } from "../formatting";
 
 // Supported text file extensions
 const TEXT_EXTENSIONS = [
@@ -326,20 +324,6 @@ async function processArchive(
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
     } catch { /* already deleted */ }
 
-    // Auto-document the response
-    const archiveQuery = caption ? `[Archive: ${fileName}] ${caption}` : `[Archive: ${fileName}]`;
-    try {
-      const docResult = await autoDocument(archiveQuery, response);
-      if (docResult) {
-        await ctx.reply(formatDocReply(docResult, escapeHtml), {
-          parse_mode: 'HTML',
-          disable_notification: true,
-        });
-      }
-    } catch (err) {
-      console.error("Auto-documentation failed:", err);
-    }
-
     await auditLog(
       userId,
       username,
@@ -435,19 +419,6 @@ async function processDocuments(
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
     } catch { /* already deleted */ }
-
-    // Auto-document the response
-    try {
-      const docResult = await autoDocument(prompt, response);
-      if (docResult) {
-        await ctx.reply(formatDocReply(docResult, escapeHtml), {
-          parse_mode: 'HTML',
-          disable_notification: true,
-        });
-      }
-    } catch (err) {
-      console.error("Auto-documentation failed:", err);
-    }
 
     await auditLog(
       userId,
