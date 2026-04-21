@@ -33,7 +33,7 @@ outside that module.
 ## Branch naming
 - tier-3-c1, tier-3-c2, tier-3-c7 — per-surface sub-branches
 - tier-3 — integration branch, merged into by CC after validation
-- main — final target, merged into only after Phase 5
+- main — final target, merged into only at Phase 5 cutover
 
 ## Test runner
 vitest 4.0.18 (config at vitest.config.ts). Include pattern covers both
@@ -65,7 +65,8 @@ CC then:
 - HTTP webhook hooks (Phase 3 / C5)
 - Model routing (Phase 3 / C6)
 - Hook-to-job correlation (Phase 4 / C4)
-- Bot entry point integration with TIER_3_ENABLED flag (Phase 5 / C8)
+- Integration and end-to-end testing (Phase 4 / C8)
+- TIER_3_ENABLED flip and `main` merge (Phase 5 cutover)
 
 ---
 
@@ -122,7 +123,7 @@ enters a terminal state) and is not overloaded as a generic blob store.
 | column        | type    | notes |
 | ------------- | ------- | ----- |
 | event_id      | INTEGER | PRIMARY KEY AUTOINCREMENT |
-| job_id        | TEXT    | NULL in Phase 3 (correlation is Phase 4+ work) |
+| job_id        | TEXT    | NULL in Phase 3; populated by C4 correlation in Phase 4 |
 | session_id    | TEXT    | NOT NULL; CC's native session_id, always present in payload |
 | event_type    | TEXT    | NOT NULL |
 | payload_json  | TEXT    | NOT NULL; verbatim CC payload (not normalized) |
@@ -131,8 +132,8 @@ enters a terminal state) and is not overloaded as a generic blob store.
 Indices: `idx_hook_events_session` on `(session_id, received_at)`,
 `idx_hook_events_job` on `(job_id, received_at)`.
 
-The `job_id` column and its index exist now so Phase 4+ correlation is
-an UPDATE-and-populate operation, not a schema migration.
+The `job_id` column and its index exist now so C4's Phase 4 correlation
+work is an UPDATE-and-populate operation, not a schema migration.
 
 ### NotebookClient factory (`src/notebook/client.ts`)
 

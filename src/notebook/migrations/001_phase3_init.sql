@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS hook_events (
   received_at  INTEGER NOT NULL
 );
 
--- job_id is always NULL in Phase 3; hook-to-job correlation is Phase 4+
--- work. The column + index exist now so correlation becomes a backfill
--- UPDATE rather than a schema migration.
+-- job_id is always NULL in Phase 3; hook-to-job correlation is C4's
+-- Phase 4 work. The column + index exist now so correlation becomes
+-- a backfill UPDATE rather than a schema migration.
 CREATE INDEX IF NOT EXISTS idx_hook_events_session
   ON hook_events(session_id, received_at);
 CREATE INDEX IF NOT EXISTS idx_hook_events_job
