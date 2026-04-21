@@ -6,7 +6,7 @@ correlator existing.
 
 ## C4 — Hook-to-job correlation
 
-**Status:** merging
+**Status:** complete
 
 **Sub-branch:** tier-3-c4
 **Fork point:** 521e0df (phase 4 pre-kickoff: Phase 4 contracts + Phase 5 cutover section)
@@ -70,4 +70,10 @@ orchestrator.test.ts.
 
 ### Merge verification
 
-_(to be filled in after merge completes)_
+- Merge commit SHA: ea9657c6ba8e5fea03dfdd72141a09587b21f1a7
+- Merge commit parents: 82b8310 + 46103b2
+- bun install result: clean (no dependency changes; 213 installs across 259 packages)
+- Typecheck: green
+- Tests: 143/143 passing
+- Working tree: clean
+- Merge conflicts: none
