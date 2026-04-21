@@ -9,6 +9,10 @@ import { Bot } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
 import { TELEGRAM_TOKEN, ALLOWED_USERS, RESTART_FILE } from "./config";
+import { loadEnv } from "./config/env";
+import type { Tier3Runtime } from "./tier3/runtime";
+import { isAuthorized, rateLimiter } from "./security";
+import { auditLog, auditLogRateLimit } from "./utils";
 import { session } from "./session";
 import { unlinkSync, readFileSync, existsSync } from "fs";
 import {
@@ -75,7 +79,56 @@ bot.command("gsd", handleGsd);
 
 // ============== Message Handlers ==============
 
-bot.on("message:text", handleText);
+// Tier 3 runtime: opt-in via TIER_3_ENABLED=true. When disabled (default),
+// no new modules load, no listener binds, no DB opens — MVP behavior is
+// byte-identical to today. When enabled, text messages route through
+// runtime.runJob() instead of session.sendMessageStreaming().
+const tier3Env = loadEnv();
+let tier3Runtime: Tier3Runtime | null = null;
+if (tier3Env.tier3Enabled) {
+  try {
+    const { SqliteNotebookClient } = await import("./notebook/client");
+    const { createTier3Runtime } = await import("./tier3/runtime");
+    const notebook = new SqliteNotebookClient({ dbPath: tier3Env.miracleDbPath });
+    tier3Runtime = createTier3Runtime({ notebook, host: "127.0.0.1", port: 8787 });
+    await tier3Runtime.listener.start();
+  } catch (err) {
+    console.error("Tier 3 startup failed:", err);
+    process.exit(1);
+  }
+}
+
+if (tier3Runtime) {
+  const runtime = tier3Runtime;
+  bot.on("message:text", async (ctx) => {
+    const userId = ctx.from?.id;
+    const username = ctx.from?.username || "unknown";
+    const message = ctx.message?.text;
+    if (!userId || !message || !ctx.chat?.id) return;
+    if (!isAuthorized(userId, ALLOWED_USERS)) {
+      await ctx.reply("Unauthorized. Contact the bot owner for access.");
+      return;
+    }
+    const [allowed, retryAfter] = rateLimiter.check(userId);
+    if (!allowed) {
+      await auditLogRateLimit(userId, username, retryAfter!);
+      await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
+      return;
+    }
+    await ctx.replyWithChatAction("typing");
+    try {
+      const result = await runtime.runJob(message);
+      await ctx.reply(result.output || "(no output)");
+      await auditLog(userId, username, "TEXT", message, result.output);
+    } catch (err) {
+      console.error("Tier 3 runJob failed:", err);
+      await ctx.reply("Something went wrong.");
+      await auditLog(userId, username, "TEXT", message, "[tier3 runJob failed]");
+    }
+  });
+} else {
+  bot.on("message:text", handleText);
+}
 bot.on("message:voice", handleVoice);
 bot.on("message:photo", handlePhoto);
 bot.on("message:document", handleDocument);
@@ -145,21 +198,22 @@ if (existsSync(RESTART_FILE)) {
 const runner = run(bot);
 
 // Graceful shutdown
-const stopRunner = () => {
+const stopRunner = async () => {
   if (runner.isRunning()) {
     console.log("Stopping bot...");
     runner.stop();
   }
+  if (tier3Runtime) await tier3Runtime.stop();
 };
 
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   console.log("Received SIGINT");
-  stopRunner();
+  await stopRunner();
   process.exit(0);
 });
 
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("Received SIGTERM");
-  stopRunner();
+  await stopRunner();
   process.exit(0);
 });
