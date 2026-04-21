@@ -75,9 +75,37 @@ run "/usr/libexec/PlistBuddy -c 'Set :EnvironmentVariables:TIER_3_ENABLED false'
 say "bootout current job (bootout, NOT kickstart -k)..."
 run "launchctl bootout $DOMAIN/$LABEL"
 
-# --- Bootstrap ---
+# Let launchd fully unload the job spec before re-bootstrapping.
+# Without this delay, bootstrap races against lingering unload
+# state and fails with EIO. Discovered empirically during E5
+# integration test 2026-04-21 — 3s is the minimum margin that
+# worked reliably on this Mac mini.
+if [ "$MODE" = "execute" ]; then
+  sleep 3
+fi
+
+# --- Bootstrap (with one EIO retry) ---
 say "bootstrap from plist..."
-run "launchctl bootstrap $DOMAIN \"$PLIST\""
+if [ "$MODE" = "dry-run" ]; then
+  echo "[dry-run] launchctl bootstrap $DOMAIN $PLIST"
+else
+  if ! launchctl bootstrap "$DOMAIN" "$PLIST" 2>/tmp/rollback-bootstrap-err.txt; then
+    BOOT_ERR=$(cat /tmp/rollback-bootstrap-err.txt)
+    say "bootstrap attempt 1 failed: $BOOT_ERR"
+    if echo "$BOOT_ERR" | grep -qi "input/output\|5:"; then
+      say "EIO detected — launchd still settling. Retrying once after 5s..."
+      sleep 5
+      if ! launchctl bootstrap "$DOMAIN" "$PLIST"; then
+        say "bootstrap retry also failed. Giving up."
+        exit 2
+      fi
+      say "bootstrap retry succeeded."
+    else
+      say "bootstrap failed with non-EIO error. Not retrying."
+      exit 2
+    fi
+  fi
+fi
 
 # --- Verification ---
 if [ "$MODE" = "dry-run" ]; then
