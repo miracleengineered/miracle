@@ -44,11 +44,23 @@ export interface NotebookClient {
   updateStatus(jobId: string, status: JobStatus, result?: unknown): Job;
   getChildren(parentId: string): Job[];
   writePlanSnapshot(jobId: string, snapshot: unknown): Job;
+  appendHookEvent?(input: {
+    sessionId: string;
+    eventType: string;
+    payloadJson: string;
+    receivedAt: number;
+  }): void;
   observeCompletions(parentId: string): AsyncIterable<Job>;
 }
 
 class InMemoryNotebookClient implements NotebookClient {
   private jobs = new Map<string, Job>();
+  readonly hookEvents: Array<{
+    sessionId: string;
+    eventType: string;
+    payloadJson: string;
+    receivedAt: number;
+  }> = [];
   // Per-parent buffer of completions waiting to be observed.
   private buffers = new Map<string, Job[]>();
   // Per-parent single pending resolver (set when an iterator is currently awaiting).
@@ -110,6 +122,15 @@ class InMemoryNotebookClient implements NotebookClient {
     return next;
   }
 
+  appendHookEvent(input: {
+    sessionId: string;
+    eventType: string;
+    payloadJson: string;
+    receivedAt: number;
+  }): void {
+    this.hookEvents.push({ ...input });
+  }
+
   async *observeCompletions(parentId: string): AsyncIterable<Job> {
     const seen = new Set<string>();
     for (const j of this.getChildren(parentId)) {
@@ -169,6 +190,15 @@ class SqliteNotebookClient implements NotebookClient {
   }
 
   writePlanSnapshot(_jobId: string, _snapshot: unknown): Job {
+    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  }
+
+  appendHookEvent(_input: {
+    sessionId: string;
+    eventType: string;
+    payloadJson: string;
+    receivedAt: number;
+  }): void {
     throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
   }
 
