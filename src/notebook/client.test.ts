@@ -50,4 +50,24 @@ describe("InMemoryNotebookClient", () => {
 
     expect(completions).toEqual([b.id, a.id]);
   });
+
+  it("observeCompletions yields children marked cancelled", async () => {
+    const nb = createNotebookClient();
+    const parent = nb.createJob({ payload: null });
+    const c = nb.createJob({ parentId: parent.id, payload: { n: "c" } });
+
+    const completions: string[] = [];
+    const observer = (async () => {
+      for await (const job of nb.observeCompletions(parent.id)) {
+        completions.push(job.id);
+        if (completions.length === 1) break;
+      }
+    })();
+
+    await Promise.resolve();
+    nb.updateStatus(c.id, "cancelled", { reason: "user-aborted" });
+    await observer;
+
+    expect(completions).toEqual([c.id]);
+  });
 });

@@ -105,7 +105,7 @@ class InMemoryNotebookClient implements NotebookClient {
     const job = this.jobs.get(jobId);
     if (!job) throw new Error(`Job not found: ${jobId}`);
     const now = Date.now();
-    const isTerminal = status === "completed" || status === "failed";
+    const isTerminal = isTerminalStatus(status);
     const next: Job = {
       ...job,
       status,
@@ -152,7 +152,7 @@ class InMemoryNotebookClient implements NotebookClient {
   async *observeCompletions(parentId: string): AsyncIterable<Job> {
     const seen = new Set<string>();
     for (const j of this.getChildren(parentId)) {
-      if ((j.status === "completed" || j.status === "failed") && !seen.has(j.id)) {
+      if (isTerminalStatus(j.status) && !seen.has(j.id)) {
         seen.add(j.id);
         yield j;
       }
