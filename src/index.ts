@@ -31,6 +31,7 @@ import {
   handleGsd,
   handleText,
   handleVoice,
+  handleVoiceTier3,
   handlePhoto,
   handleDocument,
   handleAudio,
@@ -140,10 +141,11 @@ if (tier3Runtime) {
       typing.stop();
     }
   });
+  bot.on("message:voice", (ctx) => handleVoiceTier3(ctx, runtime, startWorker));
 } else {
   bot.on("message:text", handleText);
+  bot.on("message:voice", handleVoice);
 }
-bot.on("message:voice", handleVoice);
 bot.on("message:photo", handlePhoto);
 bot.on("message:document", handleDocument);
 bot.on("message:audio", handleAudio);
