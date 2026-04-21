@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import express, { type Request, type Response } from "express";
 
+import type { Correlator } from "../correlation/correlator.js";
 import type { NotebookClient } from "../notebook/client.js";
 import type { HookEventPayload, HttpListener, HttpListenerConfig } from "./types.js";
 
@@ -10,6 +11,7 @@ type HookEventNotebookClient = NotebookClient &
 
 export interface ExpressHttpListenerConfig extends HttpListenerConfig {
   notebook: HookEventNotebookClient;
+  correlator?: Correlator;
   logger?: ListenerLogger;
 }
 
@@ -78,6 +80,15 @@ export class ExpressHttpListener implements HttpListener {
         payloadJson: bodyText,
         receivedAt,
       });
+
+      if (this.config.correlator) {
+        try {
+          await this.config.correlator.recordHook(sessionId);
+        } catch (error) {
+          this.logger.warn("Failed to correlate hook event; leaving job_id NULL", error);
+        }
+      }
+
       res.status(200).end();
     } catch (error) {
       this.logger.error("Failed to append hook event to notebook", error);

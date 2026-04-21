@@ -1,4 +1,4 @@
-import type { JobStatus } from "../notebook/client.js";
+import type { Job, JobStatus } from "../notebook/client.js";
 import type { ModelName } from "../types/phase3.js";
 
 export type TerminalSubtaskStatus = Extract<JobStatus, "completed" | "failed">;
@@ -46,3 +46,11 @@ export interface ChildJobPayload {
   parentAsk: string;
   model: ModelName;
 }
+
+export interface WorkerHandle {
+  stdout?: NodeJS.ReadableStream | null;
+}
+
+export type StartWorker = (
+  job: Job,
+) => void | WorkerHandle | Promise<void | WorkerHandle>;

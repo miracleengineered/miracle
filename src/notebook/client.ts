@@ -68,12 +68,14 @@ export interface NotebookClient {
     payloadJson: string;
     receivedAt: number;
   }): void;
+  backfillHookEvents?(sessionId: string, jobId: string): number | Promise<number>;
   observeCompletions(parentId: string): AsyncIterable<Job>;
 }
 
 class InMemoryNotebookClient implements NotebookClient {
   private jobs = new Map<string, Job>();
   readonly hookEvents: Array<{
+    jobId: string | null;
     sessionId: string;
     eventType: string;
     payloadJson: string;
@@ -146,7 +148,21 @@ class InMemoryNotebookClient implements NotebookClient {
     payloadJson: string;
     receivedAt: number;
   }): void {
-    this.hookEvents.push({ ...input });
+    this.hookEvents.push({
+      jobId: null,
+      ...input,
+    });
+  }
+
+  backfillHookEvents(sessionId: string, jobId: string): number {
+    let updated = 0;
+    for (const event of this.hookEvents) {
+      if (event.sessionId === sessionId && event.jobId === null) {
+        event.jobId = jobId;
+        updated += 1;
+      }
+    }
+    return updated;
   }
 
   async *observeCompletions(parentId: string): AsyncIterable<Job> {

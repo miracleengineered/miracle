@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { Readable } from "node:stream";
+
+import { describe, expect, it, vi } from "vitest";
 import {
   createNotebookClient,
   type CreateJobInput,
@@ -6,7 +8,11 @@ import {
   type JobStatus,
   type NotebookClient,
 } from "../notebook/client.js";
-import { runOrchestrator } from "./index.js";
+import type { Correlator } from "../correlation/correlator.js";
+import {
+  captureWorkerSessionIdFromLines,
+  runOrchestrator,
+} from "./index.js";
 import type { ChildJobPayload, ParentJobPayload } from "./types.js";
 
 describe("runOrchestrator", () => {
@@ -118,5 +124,85 @@ describe("runOrchestrator", () => {
 
     const result = await runPromise;
     expect(result.status).toBe("completed");
+  });
+
+  it("captures the first session_id from worker stdout and ignores later ones", async () => {
+    const correlator: Correlator = {
+      registerSession: async () => {},
+      recordHook: async () => null,
+      resolveJobId: () => null,
+      retireJob: async () => {},
+    };
+    const registerCalls: Array<{ jobId: string; sessionId: string }> = [];
+    correlator.registerSession = async (jobId, sessionId) => {
+      registerCalls.push({ jobId, sessionId });
+    };
+
+    const sessionId = await captureWorkerSessionIdFromLines({
+      jobId: "job-stream",
+      lines: (async function* () {
+        yield "not-json";
+        yield '{"type":"assistant"}';
+        yield '{"session_id":"session-first","type":"assistant"}';
+        yield '{"session_id":"session-second","type":"assistant"}';
+      })(),
+      correlator,
+    });
+
+    expect(sessionId).toBe("session-first");
+    expect(registerCalls).toEqual([
+      { jobId: "job-stream", sessionId: "session-first" },
+    ]);
+  });
+
+  it("wires worker stdout capture and retires child mappings when jobs go terminal", async () => {
+    const baseClient = createNotebookClient();
+    const registerCalls: Array<{ jobId: string; sessionId: string }> = [];
+    const retireCalls: string[] = [];
+    const correlator: Correlator = {
+      async registerSession(jobId, sessionId) {
+        registerCalls.push({ jobId, sessionId });
+      },
+      async recordHook() {
+        return null;
+      },
+      resolveJobId() {
+        return null;
+      },
+      async retireJob(jobId) {
+        retireCalls.push(jobId);
+      },
+    };
+
+    const resultPromise = runOrchestrator("Summarize the roadmap", {
+      client: baseClient,
+      correlator,
+      startWorker(job) {
+        queueMicrotask(() => {
+          baseClient.updateStatus(job.id, "completed", `${job.id} done`);
+        });
+        return {
+          stdout: Readable.from([
+            `{"session_id":"session-for-${job.id}","type":"assistant"}\n`,
+          ]),
+        };
+      },
+    });
+
+    const result = await resultPromise;
+    await vi.waitFor(() => {
+      expect(registerCalls).toHaveLength(1);
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.subtasks).toHaveLength(1);
+    expect(registerCalls).toEqual([
+      {
+        jobId: result.subtasks[0]!.jobId,
+        sessionId: `session-for-${result.subtasks[0]!.jobId}`,
+      },
+    ]);
+    expect(retireCalls).toContain(result.subtasks[0]!.jobId);
+    expect(retireCalls).toContain(result.parentJobId);
   });
 });
