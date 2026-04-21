@@ -1,8 +1,25 @@
-// SCAFFOLDING — replaced by C3 in Phase 3. Do not extend.
+// Notebook client module.
+//
+// Two implementations live here:
+//
+//   InMemoryNotebookClient — permanent test double. Used by unit tests
+//     and (until C3 lands a functional SqliteNotebookClient) by the
+//     production orchestrator default.
+//
+//   SqliteNotebookClient — Phase 3 / C3 production impl. This file
+//     contains only a skeleton; the sub-branch implements each method.
+//
+// createNotebookClient(config) dispatches on backend. See INTERFACES.md
+// → "Phase 3 contracts" for the authoritative contract.
 
 import { newJobId } from "../util/jobId.js";
+import type { JobStatus, NotebookConfig } from "../types/phase3.js";
 
-export type JobStatus = "pending" | "running" | "completed" | "failed";
+export type {
+  JobStatus,
+  NotebookBackend,
+  NotebookConfig,
+} from "../types/phase3.js";
 
 export interface CreateJobInput {
   id?: string;
@@ -127,6 +144,52 @@ class InMemoryNotebookClient implements NotebookClient {
   }
 }
 
-export function createNotebookClient(): NotebookClient {
+/**
+ * Phase 3 / C3 production impl — SKELETON ONLY in this commit.
+ * Every method throws "not implemented"; the C3 sub-branch fills them in
+ * against the schema documented in INTERFACES.md → "Phase 3 contracts".
+ */
+class SqliteNotebookClient implements NotebookClient {
+  readonly dbPath: string;
+
+  constructor(config: { dbPath: string }) {
+    this.dbPath = config.dbPath;
+  }
+
+  createJob(_input: CreateJobInput): Job {
+    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  }
+
+  updateStatus(_jobId: string, _status: JobStatus, _result?: unknown): Job {
+    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  }
+
+  getChildren(_parentId: string): Job[] {
+    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  }
+
+  writePlanSnapshot(_jobId: string, _snapshot: unknown): Job {
+    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  }
+
+  observeCompletions(_parentId: string): AsyncIterable<Job> {
+    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  }
+}
+
+/**
+ * Factory. Dispatches on backend. Defaults to in-memory so tests can
+ * call `createNotebookClient()` with no args; production callers that
+ * want the sqlite impl must pass `{ backend: "sqlite", dbPath }`
+ * explicitly (or read from env via `loadEnv().miracleDbPath`).
+ */
+export function createNotebookClient(
+  config: NotebookConfig = { backend: "memory" },
+): NotebookClient {
+  if (config.backend === "sqlite") {
+    return new SqliteNotebookClient({ dbPath: config.dbPath });
+  }
   return new InMemoryNotebookClient();
 }
+
+export { InMemoryNotebookClient, SqliteNotebookClient };
