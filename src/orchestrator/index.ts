@@ -1,12 +1,15 @@
+import type { Correlator } from "../correlation/correlator.js";
 import { createNotebookClient, type Job, type NotebookClient } from "../notebook/client.js";
 import { resolveModel } from "../routing/resolveModel.js";
 import { decomposeAsk } from "./decompose.js";
+import { captureWorkerSessionId } from "./sessionCapture.js";
 import { synthesizeResults } from "./synthesize.js";
 import type {
   ChildJobPayload,
   OrchestratorResult,
   ParentJobPayload,
   PlanSnapshot,
+  StartWorker,
   SubtaskResult,
   TerminalSubtaskStatus,
 } from "./types.js";
@@ -46,7 +49,11 @@ function toErrorResult(error: unknown): { message: string } {
 
 export async function runOrchestrator(
   ask: string,
-  opts: { client?: NotebookClient } = {},
+  opts: {
+    client?: NotebookClient;
+    correlator?: Correlator;
+    startWorker?: StartWorker;
+  } = {},
 ): Promise<OrchestratorResult> {
   const normalizedAsk = ask.trim();
   if (!normalizedAsk) {
@@ -85,9 +92,25 @@ export async function runOrchestrator(
 
     client.updateStatus(parentJob.id, "running");
 
+    if (opts.startWorker) {
+      for (const { job } of childJobs) {
+        const handle = await opts.startWorker(job);
+        if (handle?.stdout && opts.correlator) {
+          void captureWorkerSessionId({
+            jobId: job.id,
+            stdout: handle.stdout,
+            correlator: opts.correlator,
+          });
+        }
+      }
+    }
+
     const completionsById = new Map<string, Job>();
     for await (const completedJob of client.observeCompletions(parentJob.id)) {
       completionsById.set(completedJob.id, completedJob);
+      if (opts.correlator) {
+        await opts.correlator.retireJob(completedJob.id);
+      }
       if (completionsById.size === childJobs.length) {
         break;
       }
@@ -111,6 +134,9 @@ export async function runOrchestrator(
       subtasks,
       planSnapshot,
     });
+    if (opts.correlator) {
+      await opts.correlator.retireJob(parentJob.id);
+    }
 
     return {
       parentJobId: parentJob.id,
@@ -122,8 +148,15 @@ export async function runOrchestrator(
     };
   } catch (error) {
     client.updateStatus(parentJob.id, "failed", toErrorResult(error));
+    if (opts.correlator) {
+      await opts.correlator.retireJob(parentJob.id);
+    }
     throw error;
   }
 }
 
 export type { OrchestratorResult } from "./types.js";
+export {
+  captureWorkerSessionId,
+  captureWorkerSessionIdFromLines,
+} from "./sessionCapture.js";

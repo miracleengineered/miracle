@@ -2,6 +2,7 @@ import { createServer } from "node:net";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { createCorrelator } from "../correlation/correlator.js";
 import {
   InMemoryNotebookClient,
   type NotebookClient,
@@ -86,6 +87,7 @@ describe("HttpListener", () => {
     expect(await response.text()).toBe("");
     expect(notebook.hookEvents).toEqual([
       {
+        jobId: null,
         sessionId: "session-123",
         eventType: "PreToolUse",
         payloadJson: JSON.stringify(payload),
@@ -119,6 +121,7 @@ describe("HttpListener", () => {
     expect(await response.text()).toBe("");
     expect(notebook.hookEvents).toHaveLength(1);
     expect(notebook.hookEvents[0]).toMatchObject({
+      jobId: null,
       sessionId: "",
       eventType: "",
       payloadJson: "{not-json",
@@ -207,6 +210,80 @@ describe("HttpListener", () => {
 
     expect(response.status).toBe(200);
     expect(secondNotebook.hookEvents).toHaveLength(1);
+  });
+
+  it("eagerly correlates hook rows when the session mapping already exists", async () => {
+    const port = await getFreePort();
+    const notebook = new InMemoryNotebookClient();
+    const correlator = createCorrelator({ notebook });
+    await correlator.registerSession("job-eager", "session-eager");
+
+    const listener = createHttpListener({
+      host: "127.0.0.1",
+      port,
+      notebook,
+      correlator,
+      logger: TEST_LOGGER,
+    });
+    activeListeners.add(listener);
+
+    await listener.start();
+
+    const response = await fetch(`http://127.0.0.1:${port}/hook`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        session_id: "session-eager",
+        hook_event_name: "PreToolUse",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(notebook.hookEvents).toEqual([
+      expect.objectContaining({
+        jobId: "job-eager",
+        sessionId: "session-eager",
+        eventType: "PreToolUse",
+      }),
+    ]);
+  });
+
+  it("lazy-backfills hook rows after the session mapping is registered later", async () => {
+    const port = await getFreePort();
+    const notebook = new InMemoryNotebookClient();
+    const correlator = createCorrelator({ notebook });
+    const listener = createHttpListener({
+      host: "127.0.0.1",
+      port,
+      notebook,
+      correlator,
+      logger: TEST_LOGGER,
+    });
+    activeListeners.add(listener);
+
+    await listener.start();
+
+    const response = await fetch(`http://127.0.0.1:${port}/hook`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        session_id: "session-lazy",
+        hook_event_name: "Stop",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(notebook.hookEvents[0]).toMatchObject({
+      jobId: null,
+      sessionId: "session-lazy",
+    });
+
+    await correlator.registerSession("job-lazy", "session-lazy");
+
+    expect(notebook.hookEvents[0]).toMatchObject({
+      jobId: "job-lazy",
+      sessionId: "session-lazy",
+    });
   });
 });
 
