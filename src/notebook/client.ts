@@ -200,9 +200,10 @@ class InMemoryNotebookClient implements NotebookClient {
 }
 
 /**
- * Phase 3 / C3 production impl — SKELETON ONLY in this commit.
- * Every method throws "not implemented"; the C3 sub-branch fills them in
- * against the schema documented in INTERFACES.md → "Phase 3 contracts".
+ * Phase 3 / C3 production impl. Hook event persistence (appendHookEvent,
+ * backfillHookEvents) added in Phase 4 / C8; declared non-optional on the
+ * class so callers that need both methods get structural assignability
+ * without a cast.
  */
 class SqliteNotebookClient implements NotebookClient {
   readonly dbPath: string;
@@ -326,6 +327,46 @@ class SqliteNotebookClient implements NotebookClient {
       .run(serializeNullableJson(snapshot), next.updatedAt, jobId);
 
     return next;
+  }
+
+  appendHookEvent(input: {
+    sessionId: string;
+    eventType: string;
+    payloadJson: string;
+    receivedAt: number;
+  }): void {
+    // Single-statement INSERT = implicit SQLite transaction. job_id stays
+    // NULL at insert; the correlator's eager path (recordHook) or lazy
+    // paths (registerSession / retireJob) backfill it later. Wrapping the
+    // INSERT and a later UPDATE in one tx would require a cross-layer
+    // begin/commit seam; the three-path backfill makes that unnecessary.
+    this.db
+      .prepare(
+        `INSERT INTO hook_events (
+          job_id,
+          session_id,
+          event_type,
+          payload_json,
+          received_at
+        ) VALUES (NULL, ?, ?, ?, ?)`,
+      )
+      .run(input.sessionId, input.eventType, input.payloadJson, input.receivedAt);
+  }
+
+  backfillHookEvents(sessionId: string, jobId: string): number {
+    // Single-statement UPDATE = implicit transaction. Only touches rows
+    // whose job_id is still NULL — already-backfilled rows are untouched,
+    // which makes this idempotent across the correlator's three call
+    // paths (recordHook, registerSession, retireJob).
+    const result = this.db
+      .prepare(
+        `UPDATE hook_events
+         SET job_id = ?
+         WHERE session_id = ? AND job_id IS NULL`,
+      )
+      .run(jobId, sessionId);
+
+    return Number(result.changes);
   }
 
   async *observeCompletions(parentId: string): AsyncIterable<Job> {

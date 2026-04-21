@@ -16,7 +16,7 @@ import {
   createNotebookClient,
   type NotebookClient,
 } from "./client.js";
-import type { JobRow } from "../types/phase3.js";
+import type { HookEventRow, JobRow } from "../types/phase3.js";
 
 type SqliteDatabase = import("better-sqlite3").Database;
 
@@ -272,6 +272,182 @@ describe("SqliteNotebookClient", () => {
     const reader = createNotebookClient({ backend: "sqlite", dbPath });
     expect(reader.getChildren(parent.id)).toEqual([child]);
   });
+
+  describe("appendHookEvent", () => {
+    it("inserts a hook_events row with job_id NULL and round-trips all fields", () => {
+      const { dbPath } = makeTempDbPath();
+      const client = createNotebookClient({ backend: "sqlite", dbPath });
+
+      client.appendHookEvent?.({
+        sessionId: "session-abc",
+        eventType: "SessionStart",
+        payloadJson: JSON.stringify({ session_id: "session-abc", hook_event_name: "SessionStart" }),
+        receivedAt: 1_700_000_000_000,
+      });
+
+      const rows = readHookEvents(dbPath);
+      expect(rows).toEqual([
+        {
+          event_id: expect.any(Number),
+          job_id: null,
+          session_id: "session-abc",
+          event_type: "SessionStart",
+          payload_json: JSON.stringify({
+            session_id: "session-abc",
+            hook_event_name: "SessionStart",
+          }),
+          received_at: 1_700_000_000_000,
+        },
+      ]);
+    });
+
+    it("accumulates multiple inserts in received_at order", () => {
+      const { dbPath } = makeTempDbPath();
+      const client = createNotebookClient({ backend: "sqlite", dbPath });
+
+      for (let i = 0; i < 3; i += 1) {
+        client.appendHookEvent?.({
+          sessionId: "session-multi",
+          eventType: "PreToolUse",
+          payloadJson: `{"step":${i}}`,
+          receivedAt: 1_700_000_000_000 + i,
+        });
+      }
+
+      const rows = readHookEvents(dbPath);
+      expect(rows.map((r) => r.received_at)).toEqual([
+        1_700_000_000_000,
+        1_700_000_000_001,
+        1_700_000_000_002,
+      ]);
+      expect(rows.every((r) => r.job_id === null)).toBe(true);
+    });
+
+    it("accepts an empty sessionId (listener defaults for malformed payloads)", () => {
+      const { dbPath } = makeTempDbPath();
+      const client = createNotebookClient({ backend: "sqlite", dbPath });
+
+      client.appendHookEvent?.({
+        sessionId: "",
+        eventType: "",
+        payloadJson: "",
+        receivedAt: 0,
+      });
+
+      const rows = readHookEvents(dbPath);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.session_id).toBe("");
+      expect(rows[0]?.event_type).toBe("");
+      expect(rows[0]?.payload_json).toBe("");
+      expect(rows[0]?.job_id).toBeNull();
+    });
+
+    it("persists rows across a reopen", () => {
+      const { dbPath } = makeTempDbPath();
+      const writer = createNotebookClient({ backend: "sqlite", dbPath });
+
+      writer.appendHookEvent?.({
+        sessionId: "session-reopen",
+        eventType: "Stop",
+        payloadJson: `{"k":"v"}`,
+        receivedAt: 1_700_000_000_000,
+      });
+
+      const rowsOnWriter = readHookEvents(dbPath);
+      expect(rowsOnWriter).toHaveLength(1);
+
+      createNotebookClient({ backend: "sqlite", dbPath });
+      const rowsAfterReopen = readHookEvents(dbPath);
+      expect(rowsAfterReopen).toHaveLength(1);
+      expect(rowsAfterReopen[0]?.session_id).toBe("session-reopen");
+    });
+  });
+
+  describe("backfillHookEvents", () => {
+    it("sets job_id on all rows matching a session and returns the update count", () => {
+      const { dbPath } = makeTempDbPath();
+      const client = createNotebookClient({ backend: "sqlite", dbPath });
+
+      for (let i = 0; i < 3; i += 1) {
+        client.appendHookEvent?.({
+          sessionId: "session-match",
+          eventType: "PreToolUse",
+          payloadJson: `{"step":${i}}`,
+          receivedAt: 1_700_000_000_000 + i,
+        });
+      }
+      client.appendHookEvent?.({
+        sessionId: "session-other",
+        eventType: "PreToolUse",
+        payloadJson: `{"other":true}`,
+        receivedAt: 1_700_000_000_100,
+      });
+
+      const updated = client.backfillHookEvents?.("session-match", "job-aaa");
+      expect(updated).toBe(3);
+
+      const rows = readHookEvents(dbPath);
+      const matched = rows.filter((r) => r.session_id === "session-match");
+      const other = rows.filter((r) => r.session_id === "session-other");
+      expect(matched.every((r) => r.job_id === "job-aaa")).toBe(true);
+      expect(other.every((r) => r.job_id === null)).toBe(true);
+    });
+
+    it("returns 0 when no rows match the session", () => {
+      const { dbPath } = makeTempDbPath();
+      const client = createNotebookClient({ backend: "sqlite", dbPath });
+
+      client.appendHookEvent?.({
+        sessionId: "session-present",
+        eventType: "SessionStart",
+        payloadJson: "{}",
+        receivedAt: 1_700_000_000_000,
+      });
+
+      const updated = client.backfillHookEvents?.("session-absent", "job-bbb");
+      expect(updated).toBe(0);
+
+      const rows = readHookEvents(dbPath);
+      expect(rows[0]?.job_id).toBeNull();
+    });
+
+    it("leaves already-backfilled rows untouched (WHERE job_id IS NULL filter)", () => {
+      const { dbPath } = makeTempDbPath();
+      const client = createNotebookClient({ backend: "sqlite", dbPath });
+
+      client.appendHookEvent?.({
+        sessionId: "session-dup",
+        eventType: "SessionStart",
+        payloadJson: "{}",
+        receivedAt: 1_700_000_000_000,
+      });
+
+      const first = client.backfillHookEvents?.("session-dup", "job-original");
+      expect(first).toBe(1);
+
+      const second = client.backfillHookEvents?.("session-dup", "job-should-not-overwrite");
+      expect(second).toBe(0);
+
+      const rows = readHookEvents(dbPath);
+      expect(rows[0]?.job_id).toBe("job-original");
+    });
+
+    it("is idempotent when called multiple times with the same arguments", () => {
+      const { dbPath } = makeTempDbPath();
+      const client = createNotebookClient({ backend: "sqlite", dbPath });
+
+      client.appendHookEvent?.({
+        sessionId: "session-idem",
+        eventType: "SessionStart",
+        payloadJson: "{}",
+        receivedAt: 1_700_000_000_000,
+      });
+
+      expect(client.backfillHookEvents?.("session-idem", "job-x")).toBe(1);
+      expect(client.backfillHookEvents?.("session-idem", "job-x")).toBe(0);
+      expect(readHookEvents(dbPath)[0]?.job_id).toBe("job-x");
+    });
+  });
 });
 
 function makeTempDbPath(): { root: string; dbPath: string } {
@@ -321,6 +497,22 @@ function readJobRow(dbPath: string, jobId: string): JobRow | undefined {
          WHERE id = ?`,
       )
       .get(jobId);
+  } finally {
+    db.close();
+  }
+}
+
+function readHookEvents(dbPath: string): HookEventRow[] {
+  const db = new Database(dbPath, { readonly: true });
+
+  try {
+    return db
+      .prepare<[], HookEventRow>(
+        `SELECT event_id, job_id, session_id, event_type, payload_json, received_at
+         FROM hook_events
+         ORDER BY event_id ASC`,
+      )
+      .all();
   } finally {
     db.close();
   }
