@@ -8,9 +8,11 @@
 import { Bot } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
-import { TELEGRAM_TOKEN, ALLOWED_USERS, RESTART_FILE } from "./config";
+import { TELEGRAM_TOKEN, ALLOWED_USERS, RESTART_FILE, CLAUDE_CLI_PATH, WORKING_DIR } from "./config";
 import { loadEnv } from "./config/env";
 import type { Tier3Runtime } from "./tier3/runtime";
+import type { StartWorker } from "./orchestrator/types";
+import { environmentForClaudeChild } from "./secrets";
 import { isAuthorized, rateLimiter } from "./security";
 import { auditLog, auditLogRateLimit } from "./utils";
 import { session } from "./session";
@@ -85,12 +87,21 @@ bot.command("gsd", handleGsd);
 // runtime.runJob() instead of session.sendMessageStreaming().
 const tier3Env = loadEnv();
 let tier3Runtime: Tier3Runtime | null = null;
+let tier3StartWorker: StartWorker | null = null;
 if (tier3Env.tier3Enabled) {
   try {
     const { SqliteNotebookClient } = await import("./notebook/client");
     const { createTier3Runtime } = await import("./tier3/runtime");
+    const { createClaudeWorker } = await import("./tier3/workers/claudeWorker");
     const notebook = new SqliteNotebookClient({ dbPath: tier3Env.miracleDbPath });
     tier3Runtime = createTier3Runtime({ notebook, host: "127.0.0.1", port: 8787 });
+    tier3StartWorker = createClaudeWorker({
+      client: notebook,
+      correlator: tier3Runtime.correlator,
+      claudeCliPath: CLAUDE_CLI_PATH,
+      workingDir: WORKING_DIR,
+      env: environmentForClaudeChild(),
+    });
     await tier3Runtime.listener.start();
   } catch (err) {
     console.error("Tier 3 startup failed:", err);
@@ -100,6 +111,7 @@ if (tier3Env.tier3Enabled) {
 
 if (tier3Runtime) {
   const runtime = tier3Runtime;
+  const startWorker = tier3StartWorker!;
   bot.on("message:text", async (ctx) => {
     const userId = ctx.from?.id;
     const username = ctx.from?.username || "unknown";
@@ -117,7 +129,7 @@ if (tier3Runtime) {
     }
     await ctx.replyWithChatAction("typing");
     try {
-      const result = await runtime.runJob(message);
+      const result = await runtime.runJob(message, { startWorker });
       await ctx.reply(result.output || "(no output)");
       await auditLog(userId, username, "TEXT", message, result.output);
     } catch (err) {
