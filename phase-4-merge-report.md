@@ -82,7 +82,7 @@ orchestrator.test.ts.
 
 ## C8 — Integration and end-to-end testing
 
-**Status:** complete, ready to merge.
+**Status:** merged.
 
 **Sub-branch:** `tier-3-c8`
 **Fork point:** `6318199555b66fed02acb398390a11287b54e28a` (phase 4 merge report: C4 complete)
@@ -663,4 +663,15 @@ Branch `tier-3-c8` is at `4846f58`, 3 commits ahead of the
 (only touched files are `src/notebook/client.ts`, `src/notebook/sqlite.test.ts`,
 and three new files under `src/tier3/` and `tests/e2e/`; none of
 those surfaces have other branches in flight).
+
+### Merge verification
+
+- Merge commit SHA: 9a73ba8bd4dc41bea59695ff6bd34a9d9af3b83c
+- Merge commit parents: 6318199 + eab59ee
+- bun install result: clean (213 installs across 259 packages, no changes)
+- Typecheck: green
+- Tests (default): 157 passed + 1 skipped (158 total)
+- Tests (E2E=1): 158 passed (158 total, e2e ran live)
+- Working tree: clean
+- Merge conflicts: none
 
