@@ -20,3 +20,18 @@ Merge order: C3 → C5 → C6.
 - **scope_observations:** none observed — changes limited to `src/notebook/client.ts` (SqliteNotebookClient impl + migration-on-first-boot) and `src/notebook/sqlite.test.ts`; no touches to trunk-landed types or migration DDL.
 
 ---
+
+## C5 — HTTP webhook listener (loopback Express, log-only)
+
+- **merge_commit:** 7e004910e806dc7643d0d823572ed19c9b6b69ec
+- **timestamp:** 2026-04-21T03:10:16Z
+- **tsc:** pass (exit 0)
+- **npm_test:** pass (exit 0), 130 tests total
+- **sub-branch head merged:** f5cc264
+- **merge_base:** 513e363
+- **conflict:** src/notebook/client.ts, single region in SqliteNotebookClient class (original lines 315–398). Resolved by keeping HEAD (C3's real observeCompletions/readJob/getTerminalChildren) and discarding C5's stale throwing-stub appendHookEvent. Matches kickoff coordination point 1 predicted end state.
+- **install_note:** bun install required in integration worktree after merge to populate @types/express in node_modules — manifest and lockfile arrived via merge but node_modules was stale. Not a scope deviation; standard bun-worktree hygiene. Flag for future integration worktrees.
+- **interface_tightening:** appendHookEvent? kept OPTIONAL per kickoff coordination point 3. Tightening to required would require a real SqliteNotebookClient implementation (needs hook-events schema), which is out of Phase 3 scope. Deferred to Phase 4+.
+- **scope_observations:** new src/http-listener/listener.ts + listener.test.ts as expected; package.json adds express + @types/express; InMemoryNotebookClient.appendHookEvent parameter type narrower than interface (omits receivedAt) — runtime-correct via spread, flagged for Phase 4+ cleanup.
+
+---
