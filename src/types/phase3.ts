@@ -20,18 +20,28 @@ export type JobStatus =
 /**
  * Row shape for the `jobs` table. Column names match the SQLite schema
  * verbatim (snake_case) — this is the raw row, not an ORM object.
+ *
+ * `payload` and `plan_snapshot` are serialized JSON blobs (not query
+ * targets); TypeScript consumers deserialize to the corresponding
+ * `Job.payload` / `Job.planSnapshot` fields at read time.
  */
 export interface JobRow {
   id: string;
   parent_id: string | null;
   kind: string;
   status: JobStatus;
+  /** JSON-encoded Job.payload; required on every row. */
+  payload: string;
   model: string | null;
   worker_id: string | null;
   created_at: number;
   updated_at: number;
+  /** Unix ms; set when status transitions to completed, failed, or cancelled. */
+  completed_at: number | null;
   /** JSON-encoded result summary; null until the job reaches a terminal state. */
   result_summary: string | null;
+  /** JSON-encoded Job.planSnapshot; null when no plan has been written. */
+  plan_snapshot: string | null;
 }
 
 /**

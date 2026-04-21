@@ -10,11 +10,14 @@ CREATE TABLE IF NOT EXISTS jobs (
   parent_id      TEXT,
   kind           TEXT NOT NULL,
   status         TEXT NOT NULL,
+  payload        TEXT NOT NULL,
   model          TEXT,
   worker_id      TEXT,
   created_at     INTEGER NOT NULL,
   updated_at     INTEGER NOT NULL,
-  result_summary TEXT
+  completed_at   INTEGER,
+  result_summary TEXT,
+  plan_snapshot  TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
