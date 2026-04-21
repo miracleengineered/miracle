@@ -47,7 +47,7 @@ export interface JobRow {
 /**
  * Row shape for the `hook_events` table. Append-only trail of CC HTTP
  * hook posts. job_id is always NULL in Phase 3 — hook-to-job correlation
- * is Phase 4+ work (see INTERFACES.md).
+ * is C4's Phase 4 work (see INTERFACES.md → "Phase 4 contracts").
  */
 export interface HookEventRow {
   event_id: number;
