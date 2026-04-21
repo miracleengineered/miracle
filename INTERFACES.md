@@ -100,13 +100,22 @@ pre-kickoff commit; C3 wires migration-on-first-boot).
 | parent_id       | TEXT    | NULL for root jobs |
 | kind            | TEXT    | NOT NULL |
 | status          | TEXT    | NOT NULL; one of `pending` \| `running` \| `completed` \| `failed` \| `cancelled` |
+| payload         | TEXT    | NOT NULL; JSON-encoded `Job.payload` |
 | model           | TEXT    | NULL; set by C6 routing at dispatch time |
 | worker_id       | TEXT    | NULL; set when a worker claims the job |
 | created_at      | INTEGER | NOT NULL (unix ms) |
 | updated_at      | INTEGER | NOT NULL (unix ms) |
-| result_summary  | TEXT    | NULL; JSON string |
+| completed_at    | INTEGER | NULL; unix ms, set when status reaches a terminal state (`completed` \| `failed` \| `cancelled`) |
+| result_summary  | TEXT    | NULL; JSON string (terminal result only) |
+| plan_snapshot   | TEXT    | NULL; JSON-encoded `Job.planSnapshot` when present |
 
 Indices: `idx_jobs_status` on `(status)`, `idx_jobs_parent` on `(parent_id)`.
+
+`payload` and `plan_snapshot` are serialized JSON blobs — not query
+targets, no indices. TypeScript consumers deserialize at read time to
+populate `Job.payload` / `Job.planSnapshot`. `result_summary` remains
+the terminal-result column (set alongside `completed_at` when a job
+enters a terminal state) and is not overloaded as a generic blob store.
 
 **hook_events** (append-only trail):
 
