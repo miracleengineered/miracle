@@ -12,8 +12,26 @@
 // createNotebookClient(config) dispatches on backend. See INTERFACES.md
 // → "Phase 3 contracts" for the authoritative contract.
 
+import { mkdirSync, readFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { createRequire } from "node:module";
+
 import { newJobId } from "../util/jobId.js";
-import type { JobStatus, NotebookConfig } from "../types/phase3.js";
+import type { JobRow, JobStatus, NotebookConfig } from "../types/phase3.js";
+
+type SqliteDatabase = import("better-sqlite3").Database;
+
+const require = createRequire(import.meta.url);
+const Database = require("better-sqlite3") as {
+  new (filename?: string, options?: { readonly?: boolean }): SqliteDatabase;
+};
+
+const MIGRATION_SQL = readFileSync(
+  new URL("./migrations/001_phase3_init.sql", import.meta.url),
+  "utf8",
+);
+const TERMINAL_STATUSES = new Set<JobStatus>(["completed", "failed", "cancelled"]);
+const OBSERVE_POLL_INTERVAL_MS = 10;
 
 export type {
   JobStatus,
@@ -151,29 +169,198 @@ class InMemoryNotebookClient implements NotebookClient {
  */
 class SqliteNotebookClient implements NotebookClient {
   readonly dbPath: string;
+  private readonly db: SqliteDatabase;
 
   constructor(config: { dbPath: string }) {
     this.dbPath = config.dbPath;
+    mkdirSync(dirname(this.dbPath), { recursive: true });
+    this.db = new Database(this.dbPath);
+    this.db.exec(MIGRATION_SQL);
   }
 
-  createJob(_input: CreateJobInput): Job {
-    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  createJob(input: CreateJobInput): Job {
+    const now = Date.now();
+    const job: Job = {
+      id: input.id ?? newJobId(),
+      parentId: input.parentId ?? null,
+      status: "pending",
+      payload: input.payload,
+      planSnapshot: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+      result: null,
+    };
+
+    this.db
+      .prepare(
+        `INSERT INTO jobs (
+          id,
+          parent_id,
+          kind,
+          status,
+          payload,
+          model,
+          worker_id,
+          created_at,
+          updated_at,
+          completed_at,
+          result_summary,
+          plan_snapshot
+        ) VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, NULL, NULL, NULL)`,
+      )
+      .run(
+        job.id,
+        job.parentId,
+        extractKind(job.payload),
+        job.status,
+        serializeJson(job.payload),
+        job.createdAt,
+        job.updatedAt,
+      );
+
+    return job;
   }
 
-  updateStatus(_jobId: string, _status: JobStatus, _result?: unknown): Job {
-    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  updateStatus(jobId: string, status: JobStatus, result?: unknown): Job {
+    const job = this.readJob(jobId);
+    const now = Date.now();
+    const isTerminal = isTerminalStatus(status);
+    const next: Job = {
+      ...job,
+      status,
+      updatedAt: now,
+      completedAt: isTerminal ? now : job.completedAt,
+      result: isTerminal ? (result ?? job.result) : job.result,
+    };
+
+    this.db
+      .prepare(
+        `UPDATE jobs
+         SET status = ?, updated_at = ?, completed_at = ?, result_summary = ?
+         WHERE id = ?`,
+      )
+      .run(
+        next.status,
+        next.updatedAt,
+        next.completedAt,
+        isTerminal ? serializeNullableJson(next.result) : serializeNullableJson(job.result),
+        jobId,
+      );
+
+    return next;
   }
 
-  getChildren(_parentId: string): Job[] {
-    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  getChildren(parentId: string): Job[] {
+    const rows = this.db
+      .prepare<[string], JobRow>(
+        `SELECT
+          id,
+          parent_id,
+          kind,
+          status,
+          payload,
+          model,
+          worker_id,
+          created_at,
+          updated_at,
+          completed_at,
+          result_summary,
+          plan_snapshot
+         FROM jobs
+         WHERE parent_id = ?
+         ORDER BY created_at ASC, id ASC`,
+      )
+      .all(parentId);
+
+    return rows.map(hydrateJob);
   }
 
-  writePlanSnapshot(_jobId: string, _snapshot: unknown): Job {
-    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  writePlanSnapshot(jobId: string, snapshot: unknown): Job {
+    const job = this.readJob(jobId);
+    const next: Job = {
+      ...job,
+      planSnapshot: snapshot,
+      updatedAt: Date.now(),
+    };
+
+    this.db
+      .prepare(`UPDATE jobs SET plan_snapshot = ?, updated_at = ? WHERE id = ?`)
+      .run(serializeNullableJson(snapshot), next.updatedAt, jobId);
+
+    return next;
   }
 
-  observeCompletions(_parentId: string): AsyncIterable<Job> {
-    throw new Error("SqliteNotebookClient not implemented (Phase 3 / C3)");
+  async *observeCompletions(parentId: string): AsyncIterable<Job> {
+    const seen = new Set<string>();
+
+    while (this.getChildren(parentId).some((job) => !seen.has(job.id))) {
+      let next = this.getTerminalChildren(parentId).find((job) => !seen.has(job.id));
+      while (!next) {
+        await sleep(OBSERVE_POLL_INTERVAL_MS);
+        if (!this.getChildren(parentId).some((job) => !seen.has(job.id))) {
+          return;
+        }
+        next = this.getTerminalChildren(parentId).find((job) => !seen.has(job.id));
+      }
+
+      seen.add(next.id);
+      yield next;
+    }
+  }
+
+  private readJob(jobId: string): Job {
+    const row = this.db
+      .prepare<[string], JobRow>(
+        `SELECT
+          id,
+          parent_id,
+          kind,
+          status,
+          payload,
+          model,
+          worker_id,
+          created_at,
+          updated_at,
+          completed_at,
+          result_summary,
+          plan_snapshot
+         FROM jobs
+         WHERE id = ?`,
+      )
+      .get(jobId);
+
+    if (!row) {
+      throw new Error(`Job not found: ${jobId}`);
+    }
+
+    return hydrateJob(row);
+  }
+
+  private getTerminalChildren(parentId: string): Job[] {
+    const rows = this.db
+      .prepare<[string], JobRow>(
+        `SELECT
+          id,
+          parent_id,
+          kind,
+          status,
+          payload,
+          model,
+          worker_id,
+          created_at,
+          updated_at,
+          completed_at,
+          result_summary,
+          plan_snapshot
+         FROM jobs
+         WHERE parent_id = ?
+           AND status IN ('completed', 'failed', 'cancelled')
+         ORDER BY completed_at ASC, updated_at ASC, created_at ASC, id ASC`,
+      )
+      .all(parentId);
+
+    return rows.map(hydrateJob);
   }
 }
 
@@ -181,7 +368,7 @@ class SqliteNotebookClient implements NotebookClient {
  * Factory. Dispatches on backend. Defaults to in-memory so tests can
  * call `createNotebookClient()` with no args; production callers that
  * want the sqlite impl must pass `{ backend: "sqlite", dbPath }`
- * explicitly (or read from env via `loadEnv().miracleDbPath`).
+ * explicitly.
  */
 export function createNotebookClient(
   config: NotebookConfig = { backend: "memory" },
@@ -193,3 +380,62 @@ export function createNotebookClient(
 }
 
 export { InMemoryNotebookClient, SqliteNotebookClient };
+
+function hydrateJob(row: JobRow): Job {
+  return {
+    id: row.id,
+    parentId: row.parent_id,
+    status: row.status,
+    payload: deserializeJson(row.payload),
+    planSnapshot: deserializeNullableJson(row.plan_snapshot),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    completedAt: row.completed_at,
+    result: deserializeNullableJson(row.result_summary),
+  };
+}
+
+function serializeJson(value: unknown): string {
+  return JSON.stringify(value) ?? "null";
+}
+
+function serializeNullableJson(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  return serializeJson(value);
+}
+
+function deserializeJson(value: string): unknown {
+  return JSON.parse(value);
+}
+
+function deserializeNullableJson(value: string | null): unknown | null {
+  if (value === null) {
+    return null;
+  }
+  return deserializeJson(value);
+}
+
+function extractKind(payload: unknown): string {
+  const kind =
+    payload && typeof payload === "object" && "kind" in payload
+      ? payload.kind
+      : undefined;
+
+  if (typeof kind === "string" && kind.length > 0) {
+    return kind;
+  }
+
+  throw new Error(`createJob requires payload.kind (string); got: ${String(kind)}`);
+}
+
+function isTerminalStatus(status: JobStatus): boolean {
+  return TERMINAL_STATUSES.has(status);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
