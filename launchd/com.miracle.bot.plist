@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.miracle.bot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/genesisai/Projects/miracle/bot/node_modules/.bin/tsx</string>
+        <string>/Users/genesisai/Projects/miracle/bot/src/index.ts</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/genesisai/Projects/miracle/bot</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/genesisai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>CLAUDE_CLI_PATH</key>
+        <string>/Users/genesisai/.local/bin/claude</string>
+        <key>CLAUDE_WORKING_DIR</key>
+        <string>/Users/genesisai/miracle-workspace</string>
+        <key>TIER_3_ENABLED</key>
+        <string>false</string>
+    </dict>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/com.miracle.bot.out</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.miracle.bot.err</string>
+</dict>
+</plist>

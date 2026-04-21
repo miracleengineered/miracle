@@ -44,8 +44,8 @@ import { GSD_OPERATIONS, parseRoadmap } from "../src/handlers/commands";
 // ============== GSD_OPERATIONS ==============
 
 describe("GSD_OPERATIONS", () => {
-  it("has 16 entries", () => {
-    expect(GSD_OPERATIONS).toHaveLength(16);
+  it("has 19 entries", () => {
+    expect(GSD_OPERATIONS).toHaveLength(19);
   });
 
   it("has no duplicate keys", () => {

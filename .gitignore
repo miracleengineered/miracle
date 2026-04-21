@@ -1,6 +1,9 @@
 # dependencies (bun install)
 node_modules
 
+# Tier 3 standardizes on bun. Block accidental npm lockfile re-introduction.
+package-lock.json
+
 # output
 out
 dist
@@ -45,3 +48,15 @@ mcp-config.ts
 # Misrouted autodoc vault path (bot's vault config treated Windows-style D: as relative dir)
 # Rescued notes moved to ~/obsidian-misroute-recovery/
 D:/
+
+# Tier 3: per-job worker worktrees (created at runtime by C2's lifecycle API).
+# See INTERFACES.md → "Worktree path format".
+worktrees/
+
+# Tier 3 build workspace scratch files — live in tier-3 worktree only,
+# never committed to any branch. (Previously enforced only via
+# .git/info/exclude, which doesn't survive fresh clones. This codifies
+# the rule so future sub-branches and fresh clones honor it.)
+session-log.md
+in-flight.md
+approval-queue.md
