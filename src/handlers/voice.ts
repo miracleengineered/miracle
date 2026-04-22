@@ -16,6 +16,7 @@ import {
   startTypingIndicator,
 } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
+import { sendTier3Reply } from "./tier3-reply";
 
 /**
  * Handle incoming voice messages.
@@ -256,7 +257,7 @@ export async function handleVoiceTier3(
         session.sessionId = result.conversationSessionId;
         session.saveSession();
       }
-      await ctx.reply(result.output || "(no output)");
+      await sendTier3Reply(ctx, result);
       await auditLog(userId, username, "VOICE", transcript, result.output);
     } catch (err) {
       console.error("Tier 3 voice runJob failed:", err);
