@@ -97,6 +97,7 @@ export async function handleStart(ctx: Context): Promise<void> {
       `/gsd - GSD operations\n` +
       `/resume - Resume last session\n` +
       `/retry - Retry last message\n` +
+      `/voice - Toggle audio responses\n` +
       `/restart - Restart the bot\n\n` +
       `<b>Tips:</b>\n` +
       `• Prefix with <code>!</code> to interrupt current query\n` +
@@ -675,6 +676,28 @@ export async function sendGsdCommand(
     }
   } finally {
     typing.stop();
+  }
+}
+
+/**
+ * /voice on|off - Toggle voice note responses.
+ */
+export async function handleVoiceToggle(ctx: Context): Promise<void> {
+  const userId = ctx.from?.id;
+  if (!isAuthorized(userId, ALLOWED_USERS)) {
+    await ctx.reply("Unauthorized.");
+    return;
+  }
+  const arg = (ctx.match as string | undefined)?.trim().toLowerCase();
+  if (arg === "on") {
+    session.voiceMode = true;
+    await ctx.reply("Voice responses on. I'll reply with audio.");
+  } else if (arg === "off") {
+    session.voiceMode = false;
+    await ctx.reply("Voice responses off.");
+  } else {
+    const state = session.voiceMode ? "on" : "off";
+    await ctx.reply(`Voice mode is currently ${state}. Use /voice on or /voice off.`);
   }
 }
 

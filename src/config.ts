@@ -217,6 +217,9 @@ export const SESSION_FILE = resolve(TMP, "claude-telegram-session.json");
 export const STATE_FILE = resolve(TMP, "claude-telegram-state.json");
 export const RESTART_FILE = resolve(TMP, "claude-telegram-restart.json");
 export const TEMP_DIR = resolve(TMP, "telegram-bot");
+export const PREFS_DIR = resolve(HOME, ".miracle");
+mkdirSync(PREFS_DIR, { recursive: true });
+export const PREFS_FILE = resolve(HOME, ".miracle", "prefs.json");
 
 // Temp paths that are always allowed for bot operations
 export const TEMP_PATHS = [TMP, resolve(TMP)];

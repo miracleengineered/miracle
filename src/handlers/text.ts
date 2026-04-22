@@ -3,6 +3,7 @@
  */
 
 import type { Context } from "grammy";
+import { InputFile } from "grammy";
 import { session } from "../session";
 import { ALLOWED_USERS } from "../config";
 import { isAuthorized, rateLimiter } from "../security";
@@ -114,6 +115,15 @@ export async function handleText(ctx: Context): Promise<void> {
 
       // 10. Audit log
       await auditLog(userId, username, "TEXT", message, response);
+
+      // 10a. Send voice note if voice mode is on
+      if (session.voiceMode) {
+        const { textToSpeech } = await import("../utils");
+        const audio = await textToSpeech(response);
+        if (audio) {
+          await ctx.replyWithVoice(new InputFile(audio, "response.ogg"));
+        }
+      }
 
       // 10b. Delete processing message before context bar
       try {
