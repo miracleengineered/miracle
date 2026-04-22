@@ -19,6 +19,7 @@ import {
   buildActionKeyboard,
 } from "../formatting";
 import { getLastActionBar, setLastActionBar } from "./commands";
+import { buildDigestContextPrefix } from "./digest-context";
 
 /**
  * Handle incoming text messages.
@@ -90,13 +91,20 @@ export async function handleText(ctx: Context): Promise<void> {
   let state = new StreamingState();
   let statusCallback = createStatusCallback(ctx, state);
 
+  // 8b. Digest drill-down pre-processor — prepends context for "more on N" /
+  // module-name / "where did we leave off on <subject>" patterns. Non-mutating:
+  // preserves `message` for session.lastMessage retry + conversationTitle.
+  // Returns "" on any failure → Claude answers normally.
+  const contextPrefix = await buildDigestContextPrefix(message);
+  const wrappedMessage = contextPrefix + message;
+
   // 9. Send to Claude with retry logic for crashes
   const MAX_RETRIES = 1;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const response = await session.sendMessageStreaming(
-        message,
+        wrappedMessage,
         username,
         userId,
         statusCallback,
