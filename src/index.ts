@@ -37,6 +37,7 @@ import {
   handleAudio,
   handleVideo,
   handleCallback,
+  sendTier3Reply,
 } from "./handlers";
 
 // Create bot instance
@@ -138,7 +139,7 @@ if (tier3Runtime) {
         session.sessionId = result.conversationSessionId;
         session.saveSession();
       }
-      await ctx.reply(result.output || "(no output)");
+      await sendTier3Reply(ctx, result);
       await auditLog(userId, username, "TEXT", message, result.output);
     } catch (err) {
       console.error("Tier 3 runJob failed:", err);
