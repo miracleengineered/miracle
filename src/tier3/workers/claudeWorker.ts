@@ -73,6 +73,7 @@ export interface ClaudeWorkerConfig {
 interface ChildPayload {
   ask?: unknown;
   model?: unknown;
+  conversationSessionId?: unknown;
 }
 
 /**
@@ -87,6 +88,10 @@ export function createClaudeWorker(config: ClaudeWorkerConfig): StartWorker {
     const payload = (job.payload ?? {}) as ChildPayload;
     const ask = typeof payload.ask === "string" ? payload.ask : "";
     const model = typeof payload.model === "string" ? payload.model : null;
+    const conversationSessionId =
+      typeof payload.conversationSessionId === "string"
+        ? payload.conversationSessionId
+        : null;
 
     if (!ask.trim()) {
       config.client.updateStatus(job.id, "failed", {
@@ -104,6 +109,9 @@ export function createClaudeWorker(config: ClaudeWorkerConfig): StartWorker {
     ];
     if (model) {
       args.push("--model", model);
+    }
+    if (conversationSessionId) {
+      args.push("--resume", conversationSessionId);
     }
 
     let child: ChildProcess;

@@ -17,6 +17,10 @@ export interface Correlator {
   // in-memory Map rather than consulting sqlite for each lookup.
   resolveJobId(sessionId: string): string | null;
 
+  // Reverse lookup: jobId → sessionId. Used by the orchestrator to surface the
+  // captured session_id to callers before the mapping is retired.
+  resolveSessionId(jobId: string): string | null;
+
   // Called when the orchestrator sees a terminal job state. Performs one final
   // best-effort backfill sweep, then retires the in-memory mapping.
   retireJob(jobId: string): Promise<void>;
@@ -70,6 +74,10 @@ export class LiveCorrelator implements Correlator {
 
   resolveJobId(sessionId: string): string | null {
     return this.sessionToJobId.get(sessionId) ?? null;
+  }
+
+  resolveSessionId(jobId: string): string | null {
+    return this.jobToSessionId.get(jobId) ?? null;
   }
 
   async retireJob(jobId: string): Promise<void> {

@@ -48,7 +48,7 @@ export interface Tier3Runtime {
   readonly correlator: Correlator;
   runJob(
     ask: string,
-    opts?: { startWorker?: StartWorker },
+    opts?: { startWorker?: StartWorker; conversationSessionId?: string },
   ): Promise<OrchestratorResult>;
   stop(): Promise<void>;
 }
@@ -70,6 +70,7 @@ export function createTier3Runtime(config: Tier3RuntimeConfig): Tier3Runtime {
         client: config.notebook,
         correlator,
         startWorker: opts?.startWorker ?? config.startWorker,
+        conversationSessionId: opts?.conversationSessionId,
       });
     },
     async stop() {

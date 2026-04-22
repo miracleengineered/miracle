@@ -31,6 +31,7 @@ export interface OrchestratorResult {
   planSnapshot: PlanSnapshot;
   subtasks: SubtaskResult[];
   output: string;
+  conversationSessionId: string | null;
 }
 
 export interface ParentJobPayload {
@@ -45,6 +46,7 @@ export interface ChildJobPayload {
   index: number;
   parentAsk: string;
   model: ModelName;
+  conversationSessionId?: string;
 }
 
 export interface WorkerHandle {
