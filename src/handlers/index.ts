@@ -23,4 +23,9 @@ export { handleAudio } from "./audio";
 export { handleVideo } from "./video";
 export { handleCallback } from "./callback";
 export { StreamingState, createStatusCallback } from "./streaming";
-export { sendTier3Reply } from "./tier3-reply";
+export {
+  sendTier3Reply,
+  createTier3OnEvent,
+  createTier3ContextRef,
+  cleanupStreamingState,
+} from "./tier3-reply";

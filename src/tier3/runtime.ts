@@ -15,7 +15,7 @@ import { createHttpListener } from "../http-listener/listener.js";
 import type { HttpListener } from "../http-listener/types.js";
 import type { NotebookClient } from "../notebook/client.js";
 import { runOrchestrator } from "../orchestrator/index.js";
-import type { OrchestratorResult, StartWorker } from "../orchestrator/types.js";
+import type { OnEvent, OrchestratorResult, StartWorker } from "../orchestrator/types.js";
 
 /**
  * Narrower notebook type: tier-3 needs both hook-event methods live. The
@@ -48,7 +48,11 @@ export interface Tier3Runtime {
   readonly correlator: Correlator;
   runJob(
     ask: string,
-    opts?: { startWorker?: StartWorker; conversationSessionId?: string },
+    opts?: {
+      startWorker?: StartWorker;
+      conversationSessionId?: string;
+      onEvent?: OnEvent;
+    },
   ): Promise<OrchestratorResult>;
   stop(): Promise<void>;
 }
@@ -71,6 +75,7 @@ export function createTier3Runtime(config: Tier3RuntimeConfig): Tier3Runtime {
         correlator,
         startWorker: opts?.startWorker ?? config.startWorker,
         conversationSessionId: opts?.conversationSessionId,
+        onEvent: opts?.onEvent,
       });
     },
     async stop() {

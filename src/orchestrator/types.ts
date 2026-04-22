@@ -53,6 +53,14 @@ export interface WorkerHandle {
   stdout?: NodeJS.ReadableStream | null;
 }
 
+/**
+ * Per-event callback fed by the worker's stdout NDJSON reader.
+ * Optional and additive: when omitted, worker behavior is byte-identical
+ * to pre-onEvent (just captures session_id + emits terminal status).
+ */
+export type OnEvent = (event: unknown) => void | Promise<void>;
+
 export type StartWorker = (
   job: Job,
+  opts?: { onEvent?: OnEvent },
 ) => void | WorkerHandle | Promise<void | WorkerHandle>;

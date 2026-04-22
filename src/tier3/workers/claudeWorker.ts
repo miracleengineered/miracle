@@ -41,7 +41,7 @@ import { createInterface } from "node:readline";
 
 import type { Correlator } from "../../correlation/correlator.js";
 import type { NotebookClient } from "../../notebook/client.js";
-import type { StartWorker, WorkerHandle } from "../../orchestrator/types.js";
+import type { OnEvent, StartWorker, WorkerHandle } from "../../orchestrator/types.js";
 
 type WorkerLogger = Pick<Console, "warn" | "error">;
 
@@ -84,7 +84,8 @@ export function createClaudeWorker(config: ClaudeWorkerConfig): StartWorker {
   const logger = config.logger ?? console;
   const spawnFn = config.spawn ?? defaultSpawn;
 
-  return (job) => {
+  return (job, startOpts) => {
+    const onEvent = startOpts?.onEvent;
     const payload = (job.payload ?? {}) as ChildPayload;
     const ask = typeof payload.ask === "string" ? payload.ask : "";
     const model = typeof payload.model === "string" ? payload.model : null;
@@ -149,6 +150,7 @@ export function createClaudeWorker(config: ClaudeWorkerConfig): StartWorker {
       client: config.client,
       correlator: config.correlator,
       logger,
+      onEvent,
     });
 
     // stdout is null in the returned handle because we own its reader. If we
@@ -165,12 +167,13 @@ interface DriveSubprocessConfig {
   client: NotebookClient;
   correlator: Correlator;
   logger: WorkerLogger;
+  onEvent?: OnEvent;
 }
 
 async function driveSubprocess(
   config: DriveSubprocessConfig,
 ): Promise<void> {
-  const { job, child, client, correlator, logger } = config;
+  const { job, child, client, correlator, logger, onEvent } = config;
 
   const stderrChunks: string[] = [];
   if (child.stderr) {
@@ -207,6 +210,17 @@ async function driveSubprocess(
             logger.warn(
               `claudeWorker: correlator.registerSession failed for job ${job.id}`,
               registerError,
+            );
+          }
+        }
+
+        if (onEvent) {
+          try {
+            await onEvent(event);
+          } catch (onEventError) {
+            logger.warn(
+              `claudeWorker: onEvent callback threw for job ${job.id}`,
+              onEventError,
             );
           }
         }
