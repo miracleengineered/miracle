@@ -38,13 +38,9 @@ import {
   handleVideo,
   handleCallback,
   sendTier3Reply,
-  createTier3OnEvent,
-  createTier3ContextRef,
   cleanupStreamingState,
-  StreamingState,
-  createStatusCallback,
+  runTier3JobWithRetry,
 } from "./handlers";
-import { nextTurnId } from "./signatures";
 
 // Create bot instance
 const bot = new Bot(TELEGRAM_TOKEN);
@@ -136,29 +132,16 @@ if (tier3Runtime) {
       return;
     }
     const typing = startTypingIndicator(ctx);
-    const state = new StreamingState();
-    const statusCallback = createStatusCallback(ctx, state);
-    const contextRef = createTier3ContextRef();
-    const turnId = nextTurnId();
-    const processingMsg = await ctx.reply("Processing...", {
-      disable_notification: true,
-    });
-    state.statusMsg = processingMsg;
-    state.toolMessages.push(processingMsg);
-    const onEvent = createTier3OnEvent({
-      ctx,
-      chatId: ctx.chat!.id,
-      state,
-      statusCallback,
-      contextRef,
-      conversationSessionId: session.sessionId,
-      turnId,
-    });
     try {
-      const result = await runtime.runJob(message, {
+      const { result, state, contextRef } = await runTier3JobWithRetry({
+        ctx,
+        runtime,
+        ask: message,
         startWorker,
-        conversationSessionId: session.sessionId ?? undefined,
-        onEvent,
+        conversationSessionId: session.sessionId,
+        onCrashRetry: async () => {
+          await ctx.reply("⚠️ Claude crashed, retrying...");
+        },
       });
       if (result.conversationSessionId && result.conversationSessionId !== session.sessionId) {
         session.sessionId = result.conversationSessionId;
@@ -170,7 +153,6 @@ if (tier3Runtime) {
       });
       await auditLog(userId, username, "TEXT", message, result.output);
     } catch (err) {
-      await cleanupStreamingState(ctx, state);
       console.error("Tier 3 runJob failed:", err);
       await ctx.reply("Something went wrong.");
       await auditLog(userId, username, "TEXT", message, "[tier3 runJob failed]");

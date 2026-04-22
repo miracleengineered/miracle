@@ -25,7 +25,8 @@
  */
 
 import type { Context } from "grammy";
-import type { OnEvent, OrchestratorResult } from "../orchestrator/types";
+import type { OnEvent, OrchestratorResult, StartWorker } from "../orchestrator/types";
+import type { Tier3Runtime } from "../tier3/runtime";
 import type { StatusCallback } from "../types";
 import {
   DELIVERED,
@@ -33,6 +34,7 @@ import {
   hasFired,
   markFired,
   candidatesForEvent,
+  nextTurnId,
 } from "../signatures";
 import {
   extractGsdCommands,
@@ -41,7 +43,7 @@ import {
   formatToolStatus,
 } from "../formatting";
 import { getLastActionBar, setLastActionBar } from "./commands";
-import type { StreamingState } from "./streaming";
+import { StreamingState, createStatusCallback } from "./streaming";
 
 // =============== Context percentage tracking ================
 
@@ -62,6 +64,128 @@ function renderContextBar(percent: number | null): string {
   const clamped = Math.max(0, Math.min(percent, 100));
   const filled = Math.min(Math.round(clamped / 10), 10);
   return "█".repeat(filled) + "░".repeat(10 - filled) + ` ${clamped}%`;
+}
+
+// =============== Crash detection + retry wrapper ================
+
+/**
+ * Detect a claude subprocess crash from an OrchestratorResult.
+ *
+ * Tier 3 surfaces subprocess exits as a failed subtask whose result
+ * payload contains "exited with code N" (set by claudeWorker's
+ * non-zero-exit branch). Matches the MVP heuristic at text.ts:153-154.
+ */
+export function isClaudeCrash(result: OrchestratorResult): boolean {
+  if (result.status !== "failed") return false;
+  for (const sub of result.subtasks) {
+    if (sub.status !== "failed") continue;
+    const r = sub.result;
+    if (r && typeof r === "object") {
+      const err = (r as Record<string, unknown>).error;
+      if (typeof err === "string" && err.includes("exited with code")) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export interface Tier3JobConfig {
+  ctx: Context;
+  runtime: Tier3Runtime;
+  ask: string;
+  startWorker: StartWorker;
+  conversationSessionId: string | null;
+  /** Called once before each retry (not called on the initial attempt). */
+  onCrashRetry?: () => Promise<void>;
+}
+
+export interface Tier3JobOutcome {
+  result: OrchestratorResult;
+  state: StreamingState;
+  contextRef: Tier3ContextRef;
+}
+
+const MAX_RETRIES = 1; // matches MVP text.ts:94
+
+/**
+ * Runs runJob with streaming state + crash-retry. On claude subprocess
+ * crash (per isClaudeCrash), cleans up the failed attempt's tool
+ * messages, fires onCrashRetry, and re-runs once. Other failures
+ * (non-crash subtask errors, orchestrator exceptions) are not retried
+ * and bubble up via the returned result or a thrown error.
+ */
+export async function runTier3JobWithRetry(
+  cfg: Tier3JobConfig,
+): Promise<Tier3JobOutcome> {
+  const { ctx, runtime, ask, startWorker, conversationSessionId, onCrashRetry } = cfg;
+  const chatId = ctx.chat?.id;
+  if (!chatId) {
+    throw new Error("runTier3JobWithRetry: ctx.chat.id is required");
+  }
+
+  let outcome: Tier3JobOutcome | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const state = new StreamingState();
+    const statusCallback = createStatusCallback(ctx, state);
+    const contextRef = createTier3ContextRef();
+    const turnId = nextTurnId();
+    const processingMsg = await ctx.reply("Processing...", {
+      disable_notification: true,
+    });
+    state.statusMsg = processingMsg;
+    state.toolMessages.push(processingMsg);
+    const onEvent = createTier3OnEvent({
+      ctx,
+      chatId,
+      state,
+      statusCallback,
+      contextRef,
+      conversationSessionId,
+      turnId,
+    });
+
+    let result: OrchestratorResult;
+    try {
+      result = await runtime.runJob(ask, {
+        startWorker,
+        conversationSessionId: conversationSessionId ?? undefined,
+        onEvent,
+      });
+    } catch (runJobError) {
+      // Not a subprocess crash — orchestrator-level throw. Clean up
+      // this attempt's messages and propagate so the handler's catch
+      // branch reports the generic error.
+      await cleanupStreamingState(ctx, state);
+      throw runJobError;
+    }
+
+    if (isClaudeCrash(result) && attempt < MAX_RETRIES) {
+      await cleanupStreamingState(ctx, state);
+      if (onCrashRetry) {
+        try {
+          await onCrashRetry();
+        } catch (retryCbError) {
+          console.debug("onCrashRetry callback failed:", retryCbError);
+        }
+      }
+      continue;
+    }
+
+    outcome = { result, state, contextRef };
+    break;
+  }
+
+  if (!outcome) {
+    // Defensive: should be unreachable since the loop either assigns
+    // outcome or re-enters after cleanup. If we ever escape without
+    // assignment (e.g., MAX_RETRIES bumped without loop-bound update),
+    // fail loudly.
+    throw new Error("runTier3JobWithRetry: loop exited without outcome");
+  }
+
+  return outcome;
 }
 
 // =============== Streaming state cleanup ================
