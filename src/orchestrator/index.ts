@@ -53,6 +53,7 @@ export async function runOrchestrator(
     client?: NotebookClient;
     correlator?: Correlator;
     startWorker?: StartWorker;
+    conversationSessionId?: string;
   } = {},
 ): Promise<OrchestratorResult> {
   const normalizedAsk = ask.trim();
@@ -79,6 +80,9 @@ export async function runOrchestrator(
         index: subtask.index,
         parentAsk: normalizedAsk,
         model: resolveModel("orchestrator-subtask"),
+        ...(opts.conversationSessionId
+          ? { conversationSessionId: opts.conversationSessionId }
+          : {}),
       };
       const job = client.createJob({
         parentId: parentJob.id,
@@ -106,9 +110,14 @@ export async function runOrchestrator(
     }
 
     const completionsById = new Map<string, Job>();
+    const capturedSessionIds = new Map<string, string>();
     for await (const completedJob of client.observeCompletions(parentJob.id)) {
       completionsById.set(completedJob.id, completedJob);
       if (opts.correlator) {
+        const sessionId = opts.correlator.resolveSessionId(completedJob.id);
+        if (sessionId) {
+          capturedSessionIds.set(completedJob.id, sessionId);
+        }
         await opts.correlator.retireJob(completedJob.id);
       }
       if (completionsById.size === childJobs.length) {
@@ -129,6 +138,11 @@ export async function runOrchestrator(
       : "completed";
     const output = synthesizeResults(subtasks);
 
+    const firstChildJobId = childJobs[0]?.job.id;
+    const conversationSessionId = firstChildJobId
+      ? capturedSessionIds.get(firstChildJobId) ?? opts.conversationSessionId ?? null
+      : opts.conversationSessionId ?? null;
+
     client.updateStatus(parentJob.id, status, {
       output,
       subtasks,
@@ -145,6 +159,7 @@ export async function runOrchestrator(
       planSnapshot,
       subtasks,
       output,
+      conversationSessionId,
     };
   } catch (error) {
     client.updateStatus(parentJob.id, "failed", toErrorResult(error));

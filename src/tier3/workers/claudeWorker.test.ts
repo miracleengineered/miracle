@@ -56,6 +56,9 @@ function makeRecordingCorrelator(): Correlator & {
     resolveJobId() {
       return null;
     },
+    resolveSessionId() {
+      return null;
+    },
     async retireJob() {
       // no-op
     },
@@ -329,5 +332,76 @@ describe("createClaudeWorker", () => {
     expect(correlator.registerCalls).toEqual([
       { jobId: job.id, sessionId: "sess-noise" },
     ]);
+  });
+
+  it("passes --resume <id> when conversationSessionId is set on the payload", async () => {
+    const { client, updateCalls } = makeRecordingClient();
+    const correlator = makeRecordingCorrelator();
+    const parent = client.createJob({
+      payload: { kind: "orchestrator", ask: "parent", model: "opus" },
+    });
+    const job = client.createJob({
+      parentId: parent.id,
+      payload: {
+        kind: "orchestrator-subtask",
+        ask: "Continue the thread",
+        index: 0,
+        parentAsk: "parent",
+        model: "sonnet",
+        conversationSessionId: "fixture-session-xyz",
+      },
+    });
+
+    const fakeChild = makeFakeChild({
+      stdoutChunks: [
+        `{"type":"result","session_id":"fixture-session-xyz","result":"ok"}\n`,
+      ],
+      exitCode: 0,
+    });
+
+    const spawn = vi.fn(
+      (_cmd: string, _args: readonly string[], _opts: SpawnOptions) => fakeChild,
+    );
+
+    const worker = createClaudeWorker({
+      client,
+      correlator,
+      claudeCliPath: "/bin/claude",
+      workingDir: "/tmp/workdir",
+      spawn,
+    });
+
+    await worker(job);
+    await waitForTerminal(updateCalls);
+
+    expect(spawn).toHaveBeenCalledTimes(1);
+    const [, args] = spawn.mock.calls[0]!;
+    const resumeIdx = args.indexOf("--resume");
+    expect(resumeIdx).toBeGreaterThanOrEqual(0);
+    expect(args[resumeIdx + 1]).toBe("fixture-session-xyz");
+
+    const { client: client2, updateCalls: updateCalls2 } = makeRecordingClient();
+    const correlator2 = makeRecordingCorrelator();
+    const job2 = createChildJob(client2, "No resume here");
+    const fakeChild2 = makeFakeChild({
+      stdoutChunks: [
+        `{"type":"result","session_id":"sess-noresume","result":"ok"}\n`,
+      ],
+      exitCode: 0,
+    });
+    const spawn2 = vi.fn(
+      (_cmd: string, _args: readonly string[], _opts: SpawnOptions) => fakeChild2,
+    );
+    const worker2 = createClaudeWorker({
+      client: client2,
+      correlator: correlator2,
+      claudeCliPath: "/bin/claude",
+      workingDir: "/tmp/workdir",
+      spawn: spawn2,
+    });
+    await worker2(job2);
+    await waitForTerminal(updateCalls2);
+    const [, args2] = spawn2.mock.calls[0]!;
+    expect(args2).not.toContain("--resume");
   });
 });

@@ -248,7 +248,14 @@ export async function handleVoiceTier3(
     // 7. Start typing heartbeat for the runJob call
     const typing = startTypingIndicator(ctx);
     try {
-      const result = await runtime.runJob(transcript, { startWorker });
+      const result = await runtime.runJob(transcript, {
+        startWorker,
+        conversationSessionId: session.sessionId ?? undefined,
+      });
+      if (result.conversationSessionId && result.conversationSessionId !== session.sessionId) {
+        session.sessionId = result.conversationSessionId;
+        session.saveSession();
+      }
       await ctx.reply(result.output || "(no output)");
       await auditLog(userId, username, "VOICE", transcript, result.output);
     } catch (err) {

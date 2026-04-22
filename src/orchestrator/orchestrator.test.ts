@@ -131,6 +131,7 @@ describe("runOrchestrator", () => {
       registerSession: async () => {},
       recordHook: async () => null,
       resolveJobId: () => null,
+      resolveSessionId: () => null,
       retireJob: async () => {},
     };
     const registerCalls: Array<{ jobId: string; sessionId: string }> = [];
@@ -167,6 +168,9 @@ describe("runOrchestrator", () => {
         return null;
       },
       resolveJobId() {
+        return null;
+      },
+      resolveSessionId() {
         return null;
       },
       async retireJob(jobId) {

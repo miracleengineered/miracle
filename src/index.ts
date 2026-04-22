@@ -130,7 +130,14 @@ if (tier3Runtime) {
     }
     const typing = startTypingIndicator(ctx);
     try {
-      const result = await runtime.runJob(message, { startWorker });
+      const result = await runtime.runJob(message, {
+        startWorker,
+        conversationSessionId: session.sessionId ?? undefined,
+      });
+      if (result.conversationSessionId && result.conversationSessionId !== session.sessionId) {
+        session.sessionId = result.conversationSessionId;
+        session.saveSession();
+      }
       await ctx.reply(result.output || "(no output)");
       await auditLog(userId, username, "TEXT", message, result.output);
     } catch (err) {
