@@ -28,4 +28,6 @@ export {
   createTier3OnEvent,
   createTier3ContextRef,
   cleanupStreamingState,
+  runTier3JobWithRetry,
+  isClaudeCrash,
 } from "./tier3-reply";
