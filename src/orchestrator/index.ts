@@ -6,6 +6,7 @@ import { captureWorkerSessionId } from "./sessionCapture.js";
 import { synthesizeResults } from "./synthesize.js";
 import type {
   ChildJobPayload,
+  OnEvent,
   OrchestratorResult,
   ParentJobPayload,
   PlanSnapshot,
@@ -54,6 +55,7 @@ export async function runOrchestrator(
     correlator?: Correlator;
     startWorker?: StartWorker;
     conversationSessionId?: string;
+    onEvent?: OnEvent;
   } = {},
 ): Promise<OrchestratorResult> {
   const normalizedAsk = ask.trim();
@@ -98,7 +100,7 @@ export async function runOrchestrator(
 
     if (opts.startWorker) {
       for (const { job } of childJobs) {
-        const handle = await opts.startWorker(job);
+        const handle = await opts.startWorker(job, { onEvent: opts.onEvent });
         if (handle?.stdout && opts.correlator) {
           void captureWorkerSessionId({
             jobId: job.id,
