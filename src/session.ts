@@ -14,6 +14,7 @@ import type { Context } from "grammy";
 import {
   ALLOWED_PATHS,
   CLAUDE_CLI_PATH,
+  PREFS_FILE,
   SESSION_FILE,
   STATE_FILE,
   STREAMING_THROTTLE_MS,
@@ -98,6 +99,35 @@ class ClaudeSession {
   conversationTitle: string | null = null;
   contextPercent: number | null = null;
   private _workingDir: string = WORKING_DIR;
+  private _voiceMode: boolean = false;
+
+  get voiceMode(): boolean {
+    return this._voiceMode;
+  }
+
+  set voiceMode(value: boolean) {
+    this._voiceMode = value;
+    try {
+      writeFileSync(PREFS_FILE, JSON.stringify({ voiceMode: value }), "utf8");
+    } catch (err) {
+      console.warn("Failed to save voice preference:", err);
+    }
+  }
+
+  private loadPrefs(): void {
+    try {
+      if (existsSync(PREFS_FILE)) {
+        const text = readFileSync(PREFS_FILE, "utf-8");
+        const prefs = JSON.parse(text) as { voiceMode?: boolean };
+        if (typeof prefs.voiceMode === "boolean") {
+          this._voiceMode = prefs.voiceMode;
+          console.log(`Restored voice mode: ${this._voiceMode}`);
+        }
+      }
+    } catch {
+      // Ignore — use default (false)
+    }
+  }
 
   private childProcess: ChildProcess | null = null;
   private isQueryRunning = false;
@@ -108,6 +138,7 @@ class ClaudeSession {
 
   constructor() {
     this.restoreState();
+    this.loadPrefs();
   }
 
   get currentWorkingDir(): string {

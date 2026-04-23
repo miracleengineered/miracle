@@ -14,6 +14,7 @@ export {
   handleSearch,
   handleProject,
   handleGsd,
+  handleVoiceToggle,
 } from "./commands";
 export { handleText } from "./text";
 export { handleVoice, handleVoiceTier3 } from "./voice";

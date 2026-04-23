@@ -172,6 +172,24 @@ export async function transcribeVoice(
   }
 }
 
+// ============== Text-to-Speech ==============
+
+export async function textToSpeech(text: string): Promise<Buffer | null> {
+  if (!openaiClient) return null;
+  try {
+    const response = await openaiClient.audio.speech.create({
+      model: "tts-1",
+      voice: "nova",
+      input: text.slice(0, 4096), // OpenAI TTS max input
+      response_format: "opus",    // OGG/Opus — Telegram voice note format
+    });
+    return Buffer.from(await response.arrayBuffer());
+  } catch (error) {
+    console.error("TTS failed:", error);
+    return null;
+  }
+}
+
 // ============== Typing Indicator ==============
 
 export interface TypingController {
