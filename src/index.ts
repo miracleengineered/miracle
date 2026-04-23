@@ -5,7 +5,7 @@
  * Adapted from linuz90/claude-telegram-bot (Bun/TypeScript).
  */
 
-import { Bot } from "grammy";
+import { Bot, InputFile } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
 import { TELEGRAM_TOKEN, ALLOWED_USERS, RESTART_FILE, CLAUDE_CLI_PATH, WORKING_DIR } from "./config";
@@ -29,6 +29,7 @@ import {
   handleSearch,
   handleProject,
   handleGsd,
+  handleVoiceToggle,
   handleText,
   handleVoice,
   handleVoiceTier3,
@@ -82,6 +83,7 @@ bot.command("retry", handleRetry);
 bot.command("search", handleSearch);
 bot.command("project", handleProject);
 bot.command("gsd", handleGsd);
+bot.command("voice", handleVoiceToggle);
 
 // ============== Message Handlers ==============
 
@@ -151,6 +153,13 @@ if (tier3Runtime) {
         contextPercent: contextRef.percent,
         streamingState: state,
       });
+      if (session.voiceMode) {
+        const { textToSpeech } = await import("./utils");
+        const audio = await textToSpeech(result.output || "");
+        if (audio) {
+          await ctx.replyWithVoice(new InputFile(audio, "response.ogg"));
+        }
+      }
       await auditLog(userId, username, "TEXT", message, result.output);
     } catch (err) {
       console.error("Tier 3 runJob failed:", err);
