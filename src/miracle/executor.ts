@@ -69,8 +69,38 @@ export interface RunExecutorOptions {
   maxTurns?: number;
   cwd?: string;
   bot: Api;
-  abortSignal?: AbortSignal;
   modelKind?: string;
+}
+
+/**
+ * Module-level registry of AbortControllers for currently-running
+ * executor invocations, keyed by planId. Lets /miracle-halt stop a
+ * specific plan (or all). Cleared in runExecutor's finally clause.
+ */
+const activeControllers = new Map<string, AbortController>();
+
+export function listRunningPlanIds(): string[] {
+  return [...activeControllers.keys()];
+}
+
+export function isPlanRunning(planId: string): boolean {
+  return activeControllers.has(planId);
+}
+
+export function haltPlanId(planId: string): boolean {
+  const ac = activeControllers.get(planId);
+  if (!ac) return false;
+  ac.abort();
+  return true;
+}
+
+export function haltAllPlans(): number {
+  let count = 0;
+  for (const ac of activeControllers.values()) {
+    ac.abort();
+    count++;
+  }
+  return count;
 }
 
 const DEFAULT_PROJECT_KEY = "miracle-slice";
@@ -241,10 +271,7 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
   });
 
   const abortController = new AbortController();
-  if (opts.abortSignal) {
-    if (opts.abortSignal.aborted) abortController.abort();
-    else opts.abortSignal.addEventListener("abort", () => abortController.abort(), { once: true });
-  }
+  activeControllers.set(opts.planId, abortController);
 
   await sendToTopic(
     opts.bot,
@@ -258,6 +285,7 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
   let lastError: Error | null = null;
 
   try {
+    try {
     await withSliceApiKey(async () => {
       const q = query({
         prompt: renderProgressPrompt(opts.intent, opts.plan),
@@ -286,8 +314,11 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
         }
       }
     });
-  } catch (err) {
-    lastError = err as Error;
+    } catch (err) {
+      lastError = err as Error;
+    }
+  } finally {
+    activeControllers.delete(opts.planId);
   }
 
   const endedAt = Date.now();
@@ -304,9 +335,9 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
   if (blockedCommand) {
     outcome = "failed_blocklist";
     notes = `blocked command: ${blockedCommand.slice(0, 200)} (pattern: ${blockedPattern})`;
-  } else if (opts.abortSignal?.aborted) {
+  } else if (abortController.signal.aborted) {
     outcome = "failed_halt";
-    notes = "halted by /miracle-halt or external abort";
+    notes = "halted by /miracle-halt";
   } else if (finalResult) {
     usdSpent = finalResult.total_cost_usd;
     turnCount = finalResult.num_turns;
