@@ -20,7 +20,6 @@ import { unlinkSync, readFileSync, existsSync } from "fs";
 import {
   handleStart,
   handleNew,
-  handleClear,
   handleStop,
   handleStatus,
   handleResume,
@@ -73,8 +72,9 @@ bot.use(
 // ============== Command Handlers ==============
 
 bot.command("start", handleStart);
+bot.command("help", handleStart);
 bot.command("new", handleNew);
-bot.command("clear", handleClear);
+bot.command("clear", handleNew);
 bot.command("stop", handleStop);
 bot.command("status", handleStatus);
 bot.command("resume", handleResume);
@@ -204,6 +204,8 @@ const botInfo = await bot.api.getMe();
 console.log(`Bot started: @${botInfo.username}`);
 
 await bot.api.setMyCommands([
+  { command: "start", description: "Show status + commands" },
+  { command: "help", description: "Show status + commands" },
   { command: "new", description: "Start a new conversation" },
   { command: "clear", description: "Clear context and start fresh" },
   { command: "stop", description: "Stop current query" },

@@ -23,15 +23,5 @@ export function decomposeAsk(ask: string): DecomposedSubtask[] {
     return numberedItems.map((item, index) => ({ index, ask: item }));
   }
 
-  const keywordSegments = normalizedAsk
-    .replace(/\s+/g, " ")
-    .split(/\s+(?:and|then)\s+/i)
-    .map(cleanSegment)
-    .filter(Boolean);
-
-  if (keywordSegments.length >= 2) {
-    return keywordSegments.map((segment, index) => ({ index, ask: segment }));
-  }
-
   return [{ index: 0, ask: cleanSegment(normalizedAsk) }];
 }

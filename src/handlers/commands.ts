@@ -94,6 +94,7 @@ export async function handleStart(ctx: Context): Promise<void> {
       `/stop - Stop current query\n` +
       `/status - Show detailed status\n` +
       `/project - Switch project\n` +
+      `/search &lt;query&gt; - Search the vault\n` +
       `/gsd - GSD operations\n` +
       `/resume - Resume last session\n` +
       `/retry - Retry last message\n` +
@@ -131,32 +132,6 @@ export async function handleNew(ctx: Context): Promise<void> {
   await session.kill();
 
   await ctx.reply("🆕 Session cleared. Next message starts fresh.");
-}
-
-/**
- * /clear - Clear session (alias for /new with different messaging).
- */
-export async function handleClear(ctx: Context): Promise<void> {
-  const userId = ctx.from?.id;
-
-  if (!isAuthorized(userId, ALLOWED_USERS)) {
-    await ctx.reply("Unauthorized.");
-    return;
-  }
-
-  // Stop any running query
-  if (session.isRunning) {
-    const result = await session.stop();
-    if (result) {
-      await sleep(100);
-      session.clearStopRequested();
-    }
-  }
-
-  // Clear session
-  await session.kill();
-
-  await ctx.reply("Context cleared. Next message starts fresh.");
 }
 
 /**
@@ -539,7 +514,7 @@ export async function handleGsd(ctx: Context): Promise<void> {
       statusText += `\n\n<b>Next:</b> Phase ${nextPhase.number}: ${nextPhase.name}\n<i>${nextPhase.description}</i>`;
     }
   } else {
-    statusText = "\n<i>No ROADMAP.md found</i>";
+    statusText = `\n<i>No ROADMAP.md in ${projectName}. Use /project to switch, or create ROADMAP.md to track phases.</i>`;
   }
 
   // Build inline keyboard: 2 buttons per row
