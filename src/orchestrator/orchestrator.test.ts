@@ -47,7 +47,7 @@ describe("runOrchestrator", () => {
       },
     };
 
-    const runPromise = runOrchestrator("Gather facts and draft summary", { client });
+    const runPromise = runOrchestrator("1. Gather facts\n2. draft summary", { client });
 
     await Promise.resolve();
 
