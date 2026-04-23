@@ -4,5 +4,11 @@
   },
   "orchestrator-subtask": {
     "default": "sonnet"
+  },
+  "miracle-planner": {
+    "default": "sonnet"
+  },
+  "miracle-executor": {
+    "default": "sonnet"
   }
 }

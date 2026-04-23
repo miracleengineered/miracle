@@ -85,6 +85,25 @@ bot.command("project", handleProject);
 bot.command("gsd", handleGsd);
 bot.command("voice", handleVoiceToggle);
 
+// Miracle v1 slice — opt-in via MIRACLE_SLICE_ENABLED=true. When false
+// (default), none of these commands register and no slice modules run.
+// When true, the secrets loader already asserted ANTHROPIC_API_KEY_SLICE
+// and MIRACLE_SLICE_CHAT_ID are present, and MIRACLE_HMAC_SECRET is
+// required at callback time.
+const miracleSliceEnabled = process.env.MIRACLE_SLICE_ENABLED === "true";
+if (miracleSliceEnabled) {
+  const {
+    handlePlanCommand,
+    handleMiracleHalt,
+    handleMiracleStatus,
+    handleMiracleCancel,
+  } = await import("./handlers/miracle-commands");
+  bot.command("plan", handlePlanCommand);
+  bot.command("miracle_halt", handleMiracleHalt);
+  bot.command("miracle_status", handleMiracleStatus);
+  bot.command("miracle_cancel", handleMiracleCancel);
+}
+
 // ============== Message Handlers ==============
 
 // Tier 3 runtime: opt-in via TIER_3_ENABLED=true. When disabled (default),
@@ -182,6 +201,19 @@ bot.on("message:video_note", handleVideo);
 
 // ============== Callback Queries ==============
 
+if (miracleSliceEnabled) {
+  const { handleMiracleCallback, isMiracleCallback } = await import(
+    "./handlers/miracle-callback"
+  );
+  bot.on("callback_query:data", async (ctx, next) => {
+    const data = ctx.callbackQuery?.data;
+    if (data && isMiracleCallback(data)) {
+      await handleMiracleCallback(ctx);
+      return;
+    }
+    await next();
+  });
+}
 bot.on("callback_query:data", handleCallback);
 
 // ============== Error Handler ==============
@@ -203,7 +235,7 @@ console.log("Starting bot...");
 const botInfo = await bot.api.getMe();
 console.log(`Bot started: @${botInfo.username}`);
 
-await bot.api.setMyCommands([
+const baseCommands = [
   { command: "start", description: "Show status + commands" },
   { command: "help", description: "Show status + commands" },
   { command: "new", description: "Start a new conversation" },
@@ -216,7 +248,16 @@ await bot.api.setMyCommands([
   { command: "retry", description: "Retry last message" },
   { command: "search", description: "Search the vault" },
   { command: "restart", description: "Restart the bot process" },
-]);
+];
+const sliceCommands = miracleSliceEnabled
+  ? [
+      { command: "plan", description: "Propose a plan for approval (Miracle slice)" },
+      { command: "miracle_halt", description: "Stop the running Miracle plan" },
+      { command: "miracle_status", description: "List pending + running Miracle plans" },
+      { command: "miracle_cancel", description: "Cancel a pending Miracle plan by id prefix" },
+    ]
+  : [];
+await bot.api.setMyCommands([...baseCommands, ...sliceCommands]);
 console.log("Command menu registered");
 
 // Check for pending restart message to update
