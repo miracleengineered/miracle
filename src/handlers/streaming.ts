@@ -120,7 +120,7 @@ function formatWithinLimit(
 /**
  * Split long formatted content into chunks and send as separate messages.
  */
-async function sendChunkedMessages(
+export async function sendChunkedMessages(
   ctx: Context,
   content: string
 ): Promise<void> {

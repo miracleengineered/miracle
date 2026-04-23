@@ -41,9 +41,11 @@ import {
   extractNumberedOptions,
   buildActionKeyboard,
   formatToolStatus,
+  convertMarkdownToHtml,
 } from "../formatting";
 import { getLastActionBar, setLastActionBar } from "./commands";
-import { StreamingState, createStatusCallback } from "./streaming";
+import { StreamingState, createStatusCallback, sendChunkedMessages } from "./streaming";
+import { TELEGRAM_MESSAGE_LIMIT } from "../config";
 
 // =============== Context percentage tracking ================
 
@@ -238,8 +240,31 @@ export async function sendTier3Reply(
     await cleanupStreamingState(ctx, opts.streamingState);
   }
 
-  // 1. Main reply
-  await ctx.reply(output);
+  // 1. Main reply — convert markdown → HTML and chunk if the rendered
+  //    content exceeds Telegram's 4096-byte message limit. Mirrors the
+  //    MVP streaming path in streaming.ts (segment_end branch). The
+  //    digest drill-down concatenates subtask output that routinely
+  //    runs past the limit; without chunking, Telegram 400s the entire
+  //    reply and the user sees nothing.
+  const formatted = convertMarkdownToHtml(output);
+  if (formatted.length <= TELEGRAM_MESSAGE_LIMIT) {
+    try {
+      await ctx.reply(formatted, { parse_mode: "HTML" });
+    } catch (htmlErr) {
+      // HTML rejected (unbalanced tags from broken markdown etc.) —
+      // fall back to plain text.
+      try {
+        await ctx.reply(output);
+      } catch (plainErr) {
+        console.warn("sendTier3Reply: both HTML and plain-text reply failed", {
+          htmlErr: String(htmlErr),
+          plainErr: String(plainErr),
+        });
+      }
+    }
+  } else {
+    await sendChunkedMessages(ctx, formatted);
+  }
 
   // 2. Outer-turn signature (Miracle, Delivered. / Miracle, Blocked.)
   //    parentJobId is unique per runJob so it's sufficient for dedup.
