@@ -70,6 +70,16 @@ export interface NotebookClient {
   }): void;
   backfillHookEvents?(sessionId: string, jobId: string): number | Promise<number>;
   observeCompletions(parentId: string): AsyncIterable<Job>;
+  /**
+   * Startup recovery — reset jobs with status='running' older than maxAgeMs
+   * to status='failed' with a result_summary explaining the recovery.
+   * Kind-agnostic so any job kind (orchestrator, leaf, miracle, etc.) is swept.
+   * Returns the number of rows updated.
+   *
+   * Optional on the interface so existing test mocks keep compiling;
+   * production callers guard with `notebook.recoverStaleRunning?.(…)`.
+   */
+  recoverStaleRunning?(maxAgeMs: number): number;
 }
 
 class InMemoryNotebookClient implements NotebookClient {
@@ -196,6 +206,24 @@ class InMemoryNotebookClient implements NotebookClient {
         yield next;
       }
     }
+  }
+
+  recoverStaleRunning(maxAgeMs: number): number {
+    const now = Date.now();
+    let changed = 0;
+    for (const [id, job] of this.jobs) {
+      if (job.status !== "running") continue;
+      if (now - job.createdAt < maxAgeMs) continue;
+      this.jobs.set(id, {
+        ...job,
+        status: "failed",
+        updatedAt: now,
+        completedAt: now,
+        result: { reason: "auto-recovery: stale running on startup" },
+      });
+      changed++;
+    }
+    return changed;
   }
 }
 
@@ -441,6 +469,27 @@ class SqliteNotebookClient implements NotebookClient {
       .all(parentId);
 
     return rows.map(hydrateJob);
+  }
+
+  recoverStaleRunning(maxAgeMs: number): number {
+    const now = Date.now();
+    const result = this.db
+      .prepare(
+        `UPDATE jobs
+           SET status = 'failed',
+               updated_at = ?,
+               completed_at = ?,
+               result_summary = ?
+           WHERE status = 'running'
+             AND created_at < ?`,
+      )
+      .run(
+        now,
+        now,
+        JSON.stringify({ reason: "auto-recovery: stale running on startup" }),
+        now - maxAgeMs,
+      );
+    return Number(result.changes ?? 0);
   }
 }
 

@@ -54,7 +54,7 @@ describe("SqliteNotebookClient.recoverStaleRunning (Fix 3.D)", () => {
     insertJob("j4", "leaf", "pending", 30 * 60 * 1000);           // not running
 
     const nb = createNotebookClient({ backend: "sqlite", dbPath });
-    const changed = nb.recoverStaleRunning(10 * 60 * 1000);        // 10 min threshold
+    const changed = nb.recoverStaleRunning!(10 * 60 * 1000);       // 10 min threshold
     expect(changed).toBe(2);  // j1 and j2 flipped; j3 still fresh; j4 not running
 
     const db = new Database(dbPath);
@@ -73,6 +73,6 @@ describe("SqliteNotebookClient.recoverStaleRunning (Fix 3.D)", () => {
   it("returns 0 when no stale jobs", () => {
     insertJob("j1", "leaf", "pending", 60 * 60 * 1000);
     const nb = createNotebookClient({ backend: "sqlite", dbPath });
-    expect(nb.recoverStaleRunning(10 * 60 * 1000)).toBe(0);
+    expect(nb.recoverStaleRunning!(10 * 60 * 1000)).toBe(0);
   });
 });

@@ -130,6 +130,16 @@ if (tier3Env.tier3Enabled) {
     const { createTier3Runtime } = await import("./tier3/runtime");
     const { createClaudeWorker } = await import("./tier3/workers/claudeWorker");
     const notebook = new SqliteNotebookClient({ dbPath: tier3Env.miracleDbPath });
+    // Startup recovery (Fix 3.D): sweep any job left as `running` from a prior
+    // launch — orchestrator or leaf, any kind — into `failed` so we don't
+    // accumulate ghost jobs. 10-minute threshold keeps legitimately-running
+    // jobs alive across a quick bot restart.
+    if (notebook.recoverStaleRunning) {
+      const stale = notebook.recoverStaleRunning(10 * 60 * 1000);
+      if (stale > 0) {
+        console.log(`startup: reset ${stale} stale running job(s) to failed`);
+      }
+    }
     tier3Runtime = createTier3Runtime({ notebook, host: "127.0.0.1", port: 8787 });
     tier3StartWorker = createClaudeWorker({
       client: notebook,
