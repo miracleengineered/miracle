@@ -308,6 +308,21 @@ const stopRunner = async () => {
     runner.stop();
   }
   if (tier3Runtime) await tier3Runtime.stop();
+  // Mark any Miracle slice plans that were `running` as `failed_shutdown`
+  // so they don't reappear as ghost jobs after restart (Fix 3.K).
+  if (miracleSliceEnabled) {
+    try {
+      const { markRunningPlansAsShutdown } = await import("./miracle/db");
+      const changed = markRunningPlansAsShutdown();
+      if (changed > 0) {
+        console.log(
+          `shutdown: marked ${changed} running miracle plan(s) as failed_shutdown`,
+        );
+      }
+    } catch (err) {
+      console.error("shutdown: markRunningPlansAsShutdown failed:", err);
+    }
+  }
 };
 
 process.on("SIGINT", async () => {

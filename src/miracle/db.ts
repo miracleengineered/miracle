@@ -59,6 +59,24 @@ export function getSliceDb(
   return db;
 }
 
+/**
+ * Mark all `running` plans as `failed_shutdown` — called on SIGTERM/SIGINT
+ * so an operator-initiated restart doesn't leave ghost `running` plans on
+ * disk. Returns the number of rows updated.
+ */
+export function markRunningPlansAsShutdown(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const db = getSliceDb(env);
+  const result = db
+    .prepare(
+      `UPDATE miracle_plans SET status = 'failed_shutdown', completed_at = ?
+       WHERE status = 'running'`,
+    )
+    .run(Date.now());
+  return Number(result.changes ?? 0);
+}
+
 // Test-only helpers. Not used in production code paths.
 export function _resetSliceDbForTests(): void {
   if (cachedDb) {
