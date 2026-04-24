@@ -61,7 +61,10 @@ try {
     "mcp-config.ts"
   );
   if (existsSync(mcpConfigPath)) {
-    const mcpModule = await import(mcpConfigPath).catch(() => null);
+    const mcpModule = await import(mcpConfigPath).catch((err) => {
+      console.error("mcp-config load failed:", err);
+      return null;
+    });
     if (mcpModule?.MCP_SERVERS) {
       MCP_SERVERS = mcpModule.MCP_SERVERS;
       console.log(
@@ -69,8 +72,8 @@ try {
       );
     }
   }
-} catch {
-  console.log("No mcp-config.ts found - running without MCPs");
+} catch (err) {
+  console.error("mcp-config resolve/check failed:", err);
 }
 
 export { MCP_SERVERS };
