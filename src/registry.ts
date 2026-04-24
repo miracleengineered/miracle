@@ -5,7 +5,8 @@
  */
 
 import { readFileSync } from "fs";
-import { resolve } from "path";
+import { resolve, join } from "path";
+import { homedir } from "os";
 
 export interface Project {
   name: string;
@@ -15,7 +16,12 @@ export interface Project {
   description: string;
 }
 
-const REGISTRY_PATH = resolve("D:/Projects/_ControlCenter/registry.md");
+export function resolveRegistryPath(): string {
+  return (
+    process.env.MIRACLE_REGISTRY_PATH ??
+    join(homedir(), "miracle-workspace", "registry.md")
+  );
+}
 
 /**
  * Parse registry.md markdown table into Project objects.
@@ -24,7 +30,7 @@ const REGISTRY_PATH = resolve("D:/Projects/_ControlCenter/registry.md");
 export function parseRegistry(): Project[] {
   let content: string;
   try {
-    content = readFileSync(REGISTRY_PATH, "utf-8");
+    content = readFileSync(resolveRegistryPath(), "utf-8");
   } catch (error) {
     console.error(`Failed to read registry: ${error}`);
     return [];

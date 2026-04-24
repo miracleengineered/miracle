@@ -12,7 +12,7 @@ import { ALLOWED_USERS, RESTART_FILE } from "../config";
 import { isAuthorized } from "../security";
 import { auditLog, sleep, startTypingIndicator } from "../utils";
 import { parseRegistry } from "../registry";
-import { searchVault, formatResults } from "../vault-search";
+import { searchVault, formatResults, getVaultStatus } from "../vault-search";
 import { StreamingState, createStatusCallback } from "./streaming";
 import {
   extractGsdCommands,
@@ -371,6 +371,13 @@ export async function handleSearch(ctx: Context): Promise<void> {
     return;
   }
 
+  const status = getVaultStatus();
+  if (!status.available) {
+    await ctx.reply(
+      `Vault search disabled (no basic-memory DB at ${status.path}).`,
+    );
+    return;
+  }
   const results = searchVault(query, 10);
   const messages = formatResults(query, results);
 

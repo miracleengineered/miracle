@@ -5,6 +5,17 @@
  * Adapted from linuz90/claude-telegram-bot (Bun/TypeScript).
  */
 
+process.on("unhandledRejection", (reason) => {
+  console.error("[UNHANDLED-REJECTION]", reason);
+  // Don't exit — let launchd KeepAlive handle crashes; stderr is the signal.
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[UNCAUGHT-EXCEPTION]", err);
+  // Exit cleanly so launchd restart is deterministic.
+  setTimeout(() => process.exit(1), 100);
+});
+
 import { Bot, InputFile } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
@@ -119,6 +130,16 @@ if (tier3Env.tier3Enabled) {
     const { createTier3Runtime } = await import("./tier3/runtime");
     const { createClaudeWorker } = await import("./tier3/workers/claudeWorker");
     const notebook = new SqliteNotebookClient({ dbPath: tier3Env.miracleDbPath });
+    // Startup recovery (Fix 3.D): sweep any job left as `running` from a prior
+    // launch — orchestrator or leaf, any kind — into `failed` so we don't
+    // accumulate ghost jobs. 10-minute threshold keeps legitimately-running
+    // jobs alive across a quick bot restart.
+    if (notebook.recoverStaleRunning) {
+      const stale = notebook.recoverStaleRunning(10 * 60 * 1000);
+      if (stale > 0) {
+        console.log(`startup: reset ${stale} stale running job(s) to failed`);
+      }
+    }
     tier3Runtime = createTier3Runtime({ notebook, host: "127.0.0.1", port: 8787 });
     tier3StartWorker = createClaudeWorker({
       client: notebook,
@@ -277,7 +298,13 @@ if (existsSync(RESTART_FILE)) {
     unlinkSync(RESTART_FILE);
   } catch (e) {
     console.warn("Failed to update restart message:", e);
-    try { unlinkSync(RESTART_FILE); } catch {}
+    try {
+      unlinkSync(RESTART_FILE);
+    } catch (cleanupErr) {
+      // RESTART_FILE is best-effort cleanup; a stat failure here is expected
+      // if the file was already removed by another path. Log at debug level.
+      console.debug("RESTART_FILE cleanup skipped:", cleanupErr);
+    }
   }
 }
 
@@ -291,6 +318,21 @@ const stopRunner = async () => {
     runner.stop();
   }
   if (tier3Runtime) await tier3Runtime.stop();
+  // Mark any Miracle slice plans that were `running` as `failed_shutdown`
+  // so they don't reappear as ghost jobs after restart (Fix 3.K).
+  if (miracleSliceEnabled) {
+    try {
+      const { markRunningPlansAsShutdown } = await import("./miracle/db");
+      const changed = markRunningPlansAsShutdown();
+      if (changed > 0) {
+        console.log(
+          `shutdown: marked ${changed} running miracle plan(s) as failed_shutdown`,
+        );
+      }
+    } catch (err) {
+      console.error("shutdown: markRunningPlansAsShutdown failed:", err);
+    }
+  }
 };
 
 process.on("SIGINT", async () => {

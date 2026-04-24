@@ -26,6 +26,8 @@
 import { readFileSync, existsSync } from "fs";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 
 const execFileAsync = promisify(execFile);
 
@@ -35,9 +37,18 @@ function cacheDir(): string {
   return process.env.DIGEST_CONTEXT_CACHE_DIR || DEFAULT_CACHE_DIR;
 }
 
-const SUBJECT_SEARCH_SCRIPT =
-  "/Users/genesisai/Projects/miracle/digest/subject-search.ts";
-const TSX_BIN = "/Users/genesisai/Projects/miracle/bot/node_modules/.bin/tsx";
+// Resolve paths relative to this module so the bot works from any clone.
+// __filename = /<repo-root>/bot/src/handlers/digest-context.ts
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const BOT_ROOT = resolve(__dirname, "..", "..");        // <repo>/bot
+const REPO_ROOT = resolve(BOT_ROOT, "..");              // <repo>
+const SUBJECT_SEARCH_SCRIPT = resolve(
+  REPO_ROOT,
+  "digest",
+  "subject-search.ts",
+);
+const TSX_BIN = resolve(BOT_ROOT, "node_modules", ".bin", "tsx");
 const SUBJECT_SEARCH_TIMEOUT_MS = 32_000; // slightly over the script's internal 30s
 
 type SnapshotSection = {

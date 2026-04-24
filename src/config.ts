@@ -61,7 +61,10 @@ try {
     "mcp-config.ts"
   );
   if (existsSync(mcpConfigPath)) {
-    const mcpModule = await import(mcpConfigPath).catch(() => null);
+    const mcpModule = await import(mcpConfigPath).catch((err) => {
+      console.error("mcp-config load failed:", err);
+      return null;
+    });
     if (mcpModule?.MCP_SERVERS) {
       MCP_SERVERS = mcpModule.MCP_SERVERS;
       console.log(
@@ -69,8 +72,8 @@ try {
       );
     }
   }
-} catch {
-  console.log("No mcp-config.ts found - running without MCPs");
+} catch (err) {
+  console.error("mcp-config resolve/check failed:", err);
 }
 
 export { MCP_SERVERS };
@@ -124,10 +127,13 @@ You are running via Telegram, so the user cannot easily undo mistakes. Be extra 
 export const SAFETY_PROMPT = buildSafetyPrompt(ALLOWED_PATHS);
 
 export const BLOCKED_PATTERNS = [
+  // filesystem destructive
   "rm -rf /",
   "rm -rf ~",
   "rm -rf $HOME",
   "rm -rf %USERPROFILE%",
+  "rm -rf ./",
+  "rm -rf *",
   "sudo rm",
   ":(){ :|:& };:",
   "> /dev/sd",
@@ -135,6 +141,22 @@ export const BLOCKED_PATTERNS = [
   "dd if=",
   "format c:",
   "del /s /q c:",
+  // perm / ownership sabotage
+  "chmod -R 000",
+  "chown -R",
+  // git force / destructive
+  "git reset --hard",
+  "git push --force",
+  "git push -f",
+  "git push --force-with-lease origin main",
+  "git push --force-with-lease origin master",
+  // credential exfiltration
+  "gh auth token",
+  "security find-generic-password",
+  "security delete-generic-password",
+  // infra denial
+  "launchctl bootout gui/",
+  "killall -9",
 ];
 
 export const QUERY_TIMEOUT_MS = 180_000;

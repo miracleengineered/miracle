@@ -75,6 +75,27 @@ function initDb(): boolean {
   }
 }
 
+// ============== Availability Status ==============
+
+export interface VaultStatus {
+  available: boolean;
+  reason?: "disabled" | "error";
+  path?: string;
+}
+
+/**
+ * Returns whether the basic-memory vault is available.
+ * When the DB file is missing, returns {available:false, reason:"disabled"}
+ * — callers (e.g. /search handler) should render a user-visible explanation
+ * instead of the ambiguous "no results" response.
+ */
+export function getVaultStatus(): VaultStatus {
+  if (!existsSync(DB_PATH)) {
+    return { available: false, reason: "disabled", path: DB_PATH };
+  }
+  return { available: true, path: DB_PATH };
+}
+
 // ============== Query Sanitization ==============
 
 /**

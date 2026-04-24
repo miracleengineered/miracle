@@ -23,6 +23,7 @@ const SERVICES = {
   OPENAI_API_KEY: "miracle-OPENAI_API_KEY",
   ANTHROPIC_API_KEY_SLICE: "miracle-slice-ANTHROPIC_API_KEY",
   MIRACLE_SLICE_CHAT_ID: "miracle-slice-TELEGRAM_SUPERGROUP_ID",
+  HMAC_SECRET: "miracle-HMAC_SECRET",
 } as const;
 
 export type MiracleSecrets = {
@@ -32,6 +33,8 @@ export type MiracleSecrets = {
   readonly OPENAI_API_KEY: string;
   readonly ANTHROPIC_API_KEY_SLICE?: string;
   readonly MIRACLE_SLICE_CHAT_ID?: string;
+  /** Required when MIRACLE_SLICE_ENABLED=true; absent otherwise. */
+  readonly HMAC_SECRET?: string;
 };
 
 function readFromKeychain(service: string): string {
@@ -86,13 +89,27 @@ export function loadSecretsFromKeychain(
   if (sliceKey) env.ANTHROPIC_API_KEY_SLICE = sliceKey;
   if (sliceChatId) env.MIRACLE_SLICE_CHAT_ID = sliceChatId;
 
-  return Object.freeze({
+  const required = {
     TELEGRAM_BOT_TOKEN: readFromKeychain(SERVICES.TELEGRAM_BOT_TOKEN),
     TELEGRAM_ALLOWED_USERS: readFromKeychain(SERVICES.TELEGRAM_ALLOWED_USERS),
     ANTHROPIC_API_KEY: readFromKeychain(SERVICES.ANTHROPIC_API_KEY),
     OPENAI_API_KEY: readFromKeychain(SERVICES.OPENAI_API_KEY),
+  };
+
+  // HMAC_SECRET: required when slice enabled; not loaded otherwise.
+  // Also populated into env.MIRACLE_HMAC_SECRET so approval-card.ts can
+  // continue reading via process.env — keychain is now the source of truth,
+  // plist is stripped (Fix 3.J).
+  const hmacSecret = sliceEnabled
+    ? readFromKeychain(SERVICES.HMAC_SECRET)
+    : undefined;
+  if (hmacSecret) env.MIRACLE_HMAC_SECRET = hmacSecret;
+
+  return Object.freeze({
+    ...required,
     ANTHROPIC_API_KEY_SLICE: sliceKey,
     MIRACLE_SLICE_CHAT_ID: sliceChatId,
+    HMAC_SECRET: hmacSecret,
   });
 }
 
