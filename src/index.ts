@@ -5,6 +5,17 @@
  * Adapted from linuz90/claude-telegram-bot (Bun/TypeScript).
  */
 
+process.on("unhandledRejection", (reason) => {
+  console.error("[UNHANDLED-REJECTION]", reason);
+  // Don't exit — let launchd KeepAlive handle crashes; stderr is the signal.
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[UNCAUGHT-EXCEPTION]", err);
+  // Exit cleanly so launchd restart is deterministic.
+  setTimeout(() => process.exit(1), 100);
+});
+
 import { Bot, InputFile } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
@@ -277,7 +288,13 @@ if (existsSync(RESTART_FILE)) {
     unlinkSync(RESTART_FILE);
   } catch (e) {
     console.warn("Failed to update restart message:", e);
-    try { unlinkSync(RESTART_FILE); } catch {}
+    try {
+      unlinkSync(RESTART_FILE);
+    } catch (cleanupErr) {
+      // RESTART_FILE is best-effort cleanup; a stat failure here is expected
+      // if the file was already removed by another path. Log at debug level.
+      console.debug("RESTART_FILE cleanup skipped:", cleanupErr);
+    }
   }
 }
 
