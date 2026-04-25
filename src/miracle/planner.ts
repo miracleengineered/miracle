@@ -155,13 +155,31 @@ function extractJsonPayload(raw: string): unknown {
 export interface RunPlannerOptions {
   intent: string;
   cwd?: string;
+  /** Top-level file listing of cwd, capped at 30 entries / 800 chars. */
+  cwdListing?: string;
+  /** First ~500 chars of CLAUDE.md / AGENTS.md / README.md if present. */
+  projectIntro?: string;
+  /** Output of `git -C <cwd> log --oneline -5`, capped at 500 chars. */
+  recentChanges?: string;
   modelKind?: string;
   abortSignal?: AbortSignal;
 }
 
+function appendContext(label: string, value: string | undefined, capChars: number): string {
+  if (!value) return "";
+  const trimmed = value.length > capChars ? value.slice(0, capChars) + "\n... (truncated)" : value;
+  return `\n\n${label}:\n${trimmed}`;
+}
+
 export async function runPlanner(opts: RunPlannerOptions): Promise<PlannerResult> {
   const model = resolveModel(opts.modelKind ?? "miracle-planner");
-  const systemPrompt = buildSystemPrompt() + (opts.cwd ? `\nCurrent working directory: ${opts.cwd}` : '');
+  const cwdLine = opts.cwd ? `\nCurrent working directory: ${opts.cwd}` : "";
+  const systemPrompt =
+    buildSystemPrompt() +
+    cwdLine +
+    appendContext("Top-level files in cwd", opts.cwdListing, 800) +
+    appendContext("Project intro (first 500 chars)", opts.projectIntro, 1500) +
+    appendContext("Recent commits", opts.recentChanges, 500);
 
   const rawOutputs: string[] = [];
   let zodErrorText: string | null = null;

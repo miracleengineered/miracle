@@ -293,7 +293,7 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
           model,
           systemPrompt: SLICE_SYSTEM_PROMPT_EXECUTOR,
           tools: [...opts.plan.tools],
-          maxTurns: opts.maxTurns ?? 20,
+          maxTurns: opts.maxTurns ?? 80,
           canUseTool,
           sessionStore,
           cwd: opts.cwd,

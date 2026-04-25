@@ -21,6 +21,7 @@ import {
   WORKING_DIR,
 } from "./config";
 import { environmentForClaudeChild } from "./secrets";
+import { recordInvocation } from "./daily-spend-warning";
 import {
   candidatesForEvent,
   candidateForOuterError,
@@ -84,7 +85,7 @@ function isPromptTooLong(text: string): boolean {
  */
 const MAX_SESSIONS = 5;
 
-const MAX_QUEUE_SIZE = 5;
+const MAX_QUEUE_SIZE = 20;
 
 class ClaudeSession {
   sessionId: string | null = null;
@@ -411,6 +412,24 @@ class ClaudeSession {
       stdio: ["pipe", "pipe", "pipe"],
       shell: process.platform === "win32",
     });
+
+    // Daily-invocation soft warning. Subscription path → no billing pressure,
+    // but a runaway loop could hammer rate limits silently. Counter persists
+    // across restarts via JSON file; auto-resets each day.
+    try {
+      const inv = recordInvocation();
+      if (inv.shouldWarn && ctx) {
+        const msg = `⚠️ Miracle daily invocation count crossed ${inv.threshold} (now ${inv.count}). Subscription throttle risk; check for stuck handlers.`;
+        if (chatId) {
+          ctx.api.sendMessage(chatId, msg).catch((e) =>
+            console.warn("[daily-warn] sendMessage failed:", e),
+          );
+        }
+        console.warn(`[daily-warn] ${msg}`);
+      }
+    } catch (e) {
+      console.warn("[daily-warn] recordInvocation failed:", e);
+    }
 
     // Pipe prompt via stdin (avoids command-line escaping issues on Windows)
     this.childProcess.stdin!.write(messageToSend);

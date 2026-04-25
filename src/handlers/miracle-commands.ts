@@ -23,6 +23,7 @@ import { isAuthorized } from "../security";
 import { session } from "../session";
 import { getSliceDb } from "../miracle/db.js";
 import { runPlanner, PlanValidationError } from "../miracle/planner.js";
+import { gatherCwdContext } from "../miracle/cwd-context.js";
 import {
   renderApprovalCard,
   generateNonce,
@@ -127,7 +128,12 @@ export async function handlePlanCommand(ctx: Context): Promise<void> {
   // Run Planner (Agent SDK call; takes a few seconds).
   let plannerResult;
   try {
-    plannerResult = await runPlanner({ intent, cwd: session.currentWorkingDir });
+    const ctxBundle = gatherCwdContext(session.currentWorkingDir);
+    plannerResult = await runPlanner({
+      intent,
+      cwd: session.currentWorkingDir,
+      ...ctxBundle,
+    });
   } catch (err) {
     const message =
       err instanceof PlanValidationError

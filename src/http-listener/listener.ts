@@ -20,6 +20,8 @@ export class ExpressHttpListener implements HttpListener {
   private readonly logger: ListenerLogger;
   private server: Server | null = null;
 
+  private readonly bootTime = Date.now();
+
   constructor(private readonly config: ExpressHttpListenerConfig) {
     this.logger = config.logger ?? console;
 
@@ -29,6 +31,14 @@ export class ExpressHttpListener implements HttpListener {
         type: () => true,
       }),
     );
+
+    this.app.get("/health", (_req, res) => {
+      res.status(200).json({
+        status: "ok",
+        uptime_ms: Date.now() - this.bootTime,
+        rss_bytes: process.memoryUsage().rss,
+      });
+    });
 
     this.app.post("/hook", (req, res) => {
       void this.handleHook(req, res);
