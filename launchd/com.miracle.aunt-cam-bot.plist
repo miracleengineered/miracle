@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.miracle.aunt-cam-bot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/genesisai/miracle-workspace/projects/aunt-cam-prep/bot/.venv/bin/python</string>
+        <string>main.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/genesisai/miracle-workspace/projects/aunt-cam-prep/bot</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>ExitTimeOut</key>
+    <integer>60</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/genesisai/miracle-workspace/projects/aunt-cam-prep/logs/bot.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/genesisai/miracle-workspace/projects/aunt-cam-prep/logs/bot.stderr.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/genesisai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

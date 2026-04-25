@@ -29,8 +29,14 @@ const SERVICES = {
 export type MiracleSecrets = {
   readonly TELEGRAM_BOT_TOKEN: string;
   readonly TELEGRAM_ALLOWED_USERS: string;
-  readonly ANTHROPIC_API_KEY: string;
-  readonly OPENAI_API_KEY: string;
+  /**
+   * ANTHROPIC_API_KEY and OPENAI_API_KEY are optional. The `claude` CLI
+   * subprocess is the primary code path and uses subscription auth, not
+   * env-API-key auth (see STRIPPED_FROM_CHILD_ENV below). OpenAI is only
+   * needed for voice transcription / TTS; if unset, those features no-op.
+   */
+  readonly ANTHROPIC_API_KEY?: string;
+  readonly OPENAI_API_KEY?: string;
   readonly ANTHROPIC_API_KEY_SLICE?: string;
   readonly MIRACLE_SLICE_CHAT_ID?: string;
   /** Required when MIRACLE_SLICE_ENABLED=true; absent otherwise. */
@@ -92,9 +98,9 @@ export function loadSecretsFromKeychain(
   const required = {
     TELEGRAM_BOT_TOKEN: readFromKeychain(SERVICES.TELEGRAM_BOT_TOKEN),
     TELEGRAM_ALLOWED_USERS: readFromKeychain(SERVICES.TELEGRAM_ALLOWED_USERS),
-    ANTHROPIC_API_KEY: readFromKeychain(SERVICES.ANTHROPIC_API_KEY),
-    OPENAI_API_KEY: readFromKeychain(SERVICES.OPENAI_API_KEY),
   };
+  const anthropicKey = readFromKeychainOptional(SERVICES.ANTHROPIC_API_KEY);
+  const openaiKey = readFromKeychainOptional(SERVICES.OPENAI_API_KEY);
 
   // HMAC_SECRET: required when slice enabled; not loaded otherwise.
   // Also populated into env.MIRACLE_HMAC_SECRET so approval-card.ts can
@@ -107,6 +113,8 @@ export function loadSecretsFromKeychain(
 
   return Object.freeze({
     ...required,
+    ANTHROPIC_API_KEY: anthropicKey,
+    OPENAI_API_KEY: openaiKey,
     ANTHROPIC_API_KEY_SLICE: sliceKey,
     MIRACLE_SLICE_CHAT_ID: sliceChatId,
     HMAC_SECRET: hmacSecret,

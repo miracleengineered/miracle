@@ -23,18 +23,31 @@
         <key>CLAUDE_WORKING_DIR</key>
         <string>/Users/genesisai/miracle-workspace</string>
         <key>TIER_3_ENABLED</key>
+        <string>true</string>
+        <key>MIRACLE_SLICE_ENABLED</key>
         <string>false</string>
+        <key>MIRACLE_VOICE_REPLIES_ENABLED</key>
+        <string>true</string>
     </dict>
 
     <key>KeepAlive</key>
-    <true/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>ExitTimeOut</key>
+    <integer>60</integer>
 
     <key>RunAtLoad</key>
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/tmp/com.miracle.bot.out</string>
+    <string>/Users/genesisai/.miracle/logs/com.miracle.bot.out</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/com.miracle.bot.err</string>
+    <string>/Users/genesisai/.miracle/logs/com.miracle.bot.err</string>
 </dict>
 </plist>

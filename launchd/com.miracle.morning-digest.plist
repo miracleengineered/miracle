@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.miracle.morning-digest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/genesisai/Projects/miracle/bot/node_modules/.bin/tsx</string>
+        <string>/Users/genesisai/Projects/miracle/digest/morning-digest.ts</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/genesisai/Projects/miracle</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/genesisai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>ExitTimeOut</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/genesisai/.miracle/logs/com.miracle.morning-digest.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/genesisai/.miracle/logs/com.miracle.morning-digest.err</string>
+</dict>
+</plist>

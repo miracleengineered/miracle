@@ -175,6 +175,7 @@ export async function transcribeVoice(
 // ============== Text-to-Speech ==============
 
 export async function textToSpeech(text: string): Promise<Buffer | null> {
+  if (process.env.MIRACLE_VOICE_REPLIES_ENABLED === "false") return null;
   if (!openaiClient) return null;
   try {
     const response = await openaiClient.audio.speech.create({

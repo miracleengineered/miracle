@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.askmiracle.scan-signals</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/bun</string>
+        <string>run</string>
+        <string>/Users/genesisai/Projects/askmiracle-v1/ops/scripts/scan-signals.ts</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/genesisai/Projects/askmiracle-v1</string>
+
+    <key>StartInterval</key>
+    <integer>30</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/genesisai/.miracle/logs/com.askmiracle.scan-signals.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/genesisai/.miracle/logs/com.askmiracle.scan-signals.err</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/genesisai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

@@ -235,12 +235,30 @@ export const RATE_LIMIT_WINDOW = parseInt(
 // ============== File Paths ==============
 
 const TMP = tmpdir();
-export const SESSION_FILE = resolve(TMP, "claude-telegram-session.json");
+export const PREFS_DIR = resolve(HOME, ".miracle");
+mkdirSync(PREFS_DIR, { recursive: true });
+const STATE_DIR = resolve(PREFS_DIR, "state");
+mkdirSync(STATE_DIR, { recursive: true });
+// SESSION_FILE moved out of /tmp so /resume survives reboots and tmpfile cleaners.
+// Migration: if a /tmp file exists from a prior version, prefer the newer one.
+const _LEGACY_SESSION = resolve(TMP, "claude-telegram-session.json");
+const _NEW_SESSION = resolve(STATE_DIR, "claude-telegram-session.json");
+function _resolveSessionFile(): string {
+  const legacyExists = existsSync(_LEGACY_SESSION);
+  const newExists = existsSync(_NEW_SESSION);
+  if (legacyExists && !newExists) {
+    try {
+      writeFileSync(_NEW_SESSION, readFileSync(_LEGACY_SESSION));
+    } catch {
+      // best-effort migration — fall through to use the new path either way
+    }
+  }
+  return _NEW_SESSION;
+}
+export const SESSION_FILE = _resolveSessionFile();
 export const STATE_FILE = resolve(TMP, "claude-telegram-state.json");
 export const RESTART_FILE = resolve(TMP, "claude-telegram-restart.json");
 export const TEMP_DIR = resolve(TMP, "telegram-bot");
-export const PREFS_DIR = resolve(HOME, ".miracle");
-mkdirSync(PREFS_DIR, { recursive: true });
 export const PREFS_FILE = resolve(HOME, ".miracle", "prefs.json");
 
 // Temp paths that are always allowed for bot operations

@@ -670,17 +670,14 @@ export async function handleVoiceToggle(ctx: Context): Promise<void> {
     await ctx.reply("Unauthorized.");
     return;
   }
-  const arg = (ctx.match as string | undefined)?.trim().toLowerCase();
-  if (arg === "on") {
-    session.voiceMode = true;
-    await ctx.reply("Voice responses on. I'll reply with audio.");
-  } else if (arg === "off") {
-    session.voiceMode = false;
-    await ctx.reply("Voice responses off.");
-  } else {
-    const state = session.voiceMode ? "on" : "off";
-    await ctx.reply(`Voice mode is currently ${state}. Use /voice on or /voice off.`);
-  }
+  const arg = (ctx.match as string | undefined)?.trim().toLowerCase() ?? "";
+  console.log(`[/voice] ctx.match=${JSON.stringify(ctx.match)} arg=${JSON.stringify(arg)}`);
+  let next: boolean;
+  if (arg.startsWith("off")) next = false;
+  else if (arg.startsWith("on")) next = true;
+  else next = !session.voiceMode;  // bare /voice toggles
+  session.voiceMode = next;
+  await ctx.reply(`Voice responses ${next ? "on. I'll reply with audio." : "off."}`);
 }
 
 /**

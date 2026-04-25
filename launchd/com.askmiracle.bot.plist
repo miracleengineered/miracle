@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.askmiracle.bot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/genesisai/Projects/askmiracle-v1/node_modules/.bin/tsx</string>
+        <string>/Users/genesisai/Projects/askmiracle-v1/src/index.ts</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/genesisai/Projects/askmiracle-v1</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/genesisai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>ASKMIRACLE_DB_PATH</key>
+        <string>/Users/genesisai/.askmiracle/queue.db</string>
+        <key>ASKMIRACLE_LOG_LEVEL</key>
+        <string>info</string>
+        <key>ASKMIRACLE_BUDGET_USD_MONTHLY</key>
+        <string>50</string>
+    </dict>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>ExitTimeOut</key>
+    <integer>60</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/genesisai/.miracle/logs/com.askmiracle.bot.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/genesisai/.miracle/logs/com.askmiracle.bot.err</string>
+</dict>
+</plist>
