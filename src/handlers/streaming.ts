@@ -147,6 +147,8 @@ export function createStatusCallback(
   ctx: Context,
   state: StreamingState
 ): StatusCallback {
+  let consecutiveEditFailures = 0;
+
   return async (statusType: string, content: string, segmentId?: number) => {
     try {
       if (statusType === "thinking") {
@@ -164,7 +166,13 @@ export function createStatusCallback(
               text,
               { parse_mode: "HTML" }
             );
+            consecutiveEditFailures = 0;
           } catch {
+            consecutiveEditFailures++;
+            if (consecutiveEditFailures >= 3) {
+              console.error('[ERROR] Typing indicator: 3 consecutive edit failures, stopping loop');
+              return;
+            }
             // Edit failed — send new
             state.statusMsg = await ctx.reply(text, {
               parse_mode: "HTML",

@@ -374,6 +374,7 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
       "HTML",
     );
   } else {
+    console.warn(`[BLOCKED] plan=${opts.planId} outcome=${outcome} turns=${turnCount} spend=$${usdSpent.toFixed(4)}`);
     await sendToTopic(
       opts.bot,
       opts.chatId,

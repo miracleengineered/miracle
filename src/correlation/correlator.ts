@@ -92,7 +92,8 @@ export class LiveCorrelator implements Correlator {
   }
 
   private async backfill(sessionId: string, jobId: string): Promise<void> {
-    await Promise.resolve(this.config.notebook.backfillHookEvents(sessionId, jobId));
+    Promise.resolve(this.config.notebook.backfillHookEvents(sessionId, jobId))
+      .catch((err: unknown) => console.warn('[WARN] Hook backfill failed for session', sessionId, ':', err));
   }
 }
 

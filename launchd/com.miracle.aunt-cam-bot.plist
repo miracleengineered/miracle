@@ -39,6 +39,8 @@
     <dict>
         <key>PATH</key>
         <string>/Users/genesisai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/Users/genesisai</string>
     </dict>
 </dict>
 </plist>

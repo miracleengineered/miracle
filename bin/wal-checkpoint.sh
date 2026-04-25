@@ -41,6 +41,12 @@ for db in "$HOME/.miracle/queue.db" "$HOME/.askmiracle/queue.db"; do
   fi
 done
 
+# --- hook_events prune: NULL job_id rows older than 30 days ---
+if [ -f "$HOME/.miracle/queue.db" ]; then
+  sqlite3 "$HOME/.miracle/queue.db" "DELETE FROM hook_events WHERE job_id IS NULL AND received_at < datetime('now', '-30 days');"
+  echo "$(date): pruned NULL hook_events older than 30 days"
+fi
+
 # --- Sandbox UUID cleanup: empty dirs older than 1 day ---
 if [ -d "$HOME/.askmiracle/sandbox" ]; then
   removed=$(find "$HOME/.askmiracle/sandbox" -type d -empty -mtime +1 -print -delete 2>/dev/null | wc -l | tr -d ' ')

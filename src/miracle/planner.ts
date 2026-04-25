@@ -154,13 +154,14 @@ function extractJsonPayload(raw: string): unknown {
 
 export interface RunPlannerOptions {
   intent: string;
+  cwd?: string;
   modelKind?: string;
   abortSignal?: AbortSignal;
 }
 
 export async function runPlanner(opts: RunPlannerOptions): Promise<PlannerResult> {
   const model = resolveModel(opts.modelKind ?? "miracle-planner");
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt() + (opts.cwd ? `\nCurrent working directory: ${opts.cwd}` : '');
 
   const rawOutputs: string[] = [];
   let zodErrorText: string | null = null;

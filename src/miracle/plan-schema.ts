@@ -53,7 +53,7 @@ export const PlanSchema = z
       .string()
       .trim()
       .min(1, "rationale is required")
-      .max(800, "rationale must be ≤800 chars"),
+      .max(2000, "rationale must be ≤2000 chars"),
     estimated_cost_usd: z
       .number()
       .nonnegative("estimated cost must be ≥ 0")

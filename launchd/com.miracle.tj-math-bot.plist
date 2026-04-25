@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd plist for TJ's math tutoring bot.
+
+  Install:
+    cp com.miracle.tj-math-bot.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.miracle.tj-math-bot.plist
+
+  Unload:
+    launchctl unload ~/Library/LaunchAgents/com.miracle.tj-math-bot.plist
+
+  The bot token and Anthropic key are NOT stored here.
+  They are fetched from macOS Keychain by bot.py at startup.
+  Store them first:
+    security add-generic-password -a "tj_math_bot" -s "telegram_bot_token" -w "TOKEN" -U
+    security add-generic-password -a "tj_math_bot" -s "anthropic_api_key"  -w "sk-ant-..." -U
+
+  Logs:
+    tail -f /Users/genesisai/miracle-workspace/projects/tj-math-bot/logs/bot.log
+    tail -f /Users/genesisai/miracle-workspace/projects/tj-math-bot/logs/bot_error.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.miracle.tj-math-bot</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/genesisai/miracle-workspace/projects/tj-math-bot/.venv/bin/python</string>
+        <string>/Users/genesisai/miracle-workspace/projects/tj-math-bot/bot.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/genesisai/miracle-workspace/projects/tj-math-bot</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/genesisai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/genesisai</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/genesisai/miracle-workspace/projects/tj-math-bot/logs/bot.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/genesisai/miracle-workspace/projects/tj-math-bot/logs/bot_error.log</string>
+
+    <!-- Restart on crash but let a clean sys.exit(0) stop the bot -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Prevent rapid restart loops on hard crash -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>

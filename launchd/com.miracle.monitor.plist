@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
     <key>Label</key>
     <string>com.miracle.monitor</string>
 
@@ -19,6 +25,9 @@
 
     <key>StartInterval</key>
     <integer>60</integer>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
 
     <key>RunAtLoad</key>
     <true/>

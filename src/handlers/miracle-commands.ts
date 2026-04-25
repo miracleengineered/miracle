@@ -20,6 +20,7 @@ import { randomUUID } from "node:crypto";
 
 import { ALLOWED_USERS } from "../config";
 import { isAuthorized } from "../security";
+import { session } from "../session";
 import { getSliceDb } from "../miracle/db.js";
 import { runPlanner, PlanValidationError } from "../miracle/planner.js";
 import {
@@ -126,7 +127,7 @@ export async function handlePlanCommand(ctx: Context): Promise<void> {
   // Run Planner (Agent SDK call; takes a few seconds).
   let plannerResult;
   try {
-    plannerResult = await runPlanner({ intent });
+    plannerResult = await runPlanner({ intent, cwd: session.currentWorkingDir });
   } catch (err) {
     const message =
       err instanceof PlanValidationError

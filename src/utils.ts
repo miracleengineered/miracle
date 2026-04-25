@@ -212,7 +212,7 @@ export function startTypingIndicator(ctx: Context): TypingController {
   };
 
   // Start the loop
-  loop();
+  loop().catch(err => console.error('[ERROR] Typing indicator loop crashed:', err));
 
   return {
     stop: () => {
