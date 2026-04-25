@@ -52,11 +52,7 @@ function getHmacSecret(): string {
   return secret;
 }
 
-export function signCallback(
-  approvalId: string,
-  nonce: string,
-  verdict: Verdict,
-): SignedCallback {
+export function signCallback(approvalId: string, nonce: string, verdict: Verdict): SignedCallback {
   const aid8 = approvalId.replace(/-/g, "").slice(0, 8);
   const nonce8 = nonce.replace(/-/g, "").slice(0, 8);
   const secret = getHmacSecret();
@@ -71,13 +67,7 @@ export function verifyCallback(
 ): { aid8: string; nonce8: string; verdict: Verdict } | null {
   const parts = encoded.split(":");
   if (parts.length !== 5) return null;
-  const [prefix, aid8, nonce8, verdict, sig8] = parts as [
-    string,
-    string,
-    string,
-    string,
-    string,
-  ];
+  const [prefix, aid8, nonce8, verdict, sig8] = parts as [string, string, string, string, string];
   if (prefix !== CALLBACK_PREFIX) return null;
   if (!/^[a-f0-9]{8}$/i.test(aid8)) return null;
   if (!/^[a-f0-9]{8}$/i.test(nonce8)) return null;
@@ -111,10 +101,7 @@ export function generateNonce(): string {
 }
 
 function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function renderStepsBlock(steps: string[]): string {
@@ -125,11 +112,7 @@ function renderStepsBlock(steps: string[]): string {
  * Render a Plan into a Telegram HTML approval card + inline keyboard
  * with three HMAC-signed verdict buttons.
  */
-export function renderApprovalCard(
-  plan: Plan,
-  approvalId: string,
-  nonce: string,
-): ApprovalCard {
+export function renderApprovalCard(plan: Plan, approvalId: string, nonce: string): ApprovalCard {
   const parts: string[] = [];
   parts.push(`<b>${escapeHtml(plan.title)}</b>`);
   parts.push(escapeHtml(plan.summary));

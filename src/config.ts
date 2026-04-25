@@ -17,8 +17,7 @@ import type { McpServerConfig } from "./types";
 const SECRETS = loadSecretsFromKeychain();
 
 export const TELEGRAM_TOKEN = SECRETS.TELEGRAM_BOT_TOKEN;
-export const ALLOWED_USERS: number[] = SECRETS.TELEGRAM_ALLOWED_USERS
-  .split(",")
+export const ALLOWED_USERS: number[] = SECRETS.TELEGRAM_ALLOWED_USERS.split(",")
   .filter((x) => x.trim())
   .map((x) => parseInt(x.trim(), 10))
   .filter((x) => !isNaN(x));
@@ -56,10 +55,7 @@ export const CLAUDE_CLI_PATH = findClaudeCli();
 let MCP_SERVERS: Record<string, McpServerConfig> = {};
 
 try {
-  const mcpConfigPath = resolve(
-    dirname(import.meta.dirname || "."),
-    "mcp-config.ts"
-  );
+  const mcpConfigPath = resolve(dirname(import.meta.dirname || "."), "mcp-config.ts");
   if (existsSync(mcpConfigPath)) {
     const mcpModule = await import(mcpConfigPath).catch((err) => {
       console.error("mcp-config load failed:", err);
@@ -67,9 +63,7 @@ try {
     });
     if (mcpModule?.MCP_SERVERS) {
       MCP_SERVERS = mcpModule.MCP_SERVERS;
-      console.log(
-        `Loaded ${Object.keys(MCP_SERVERS).length} MCP servers from mcp-config.ts`
-      );
+      console.log(`Loaded ${Object.keys(MCP_SERVERS).length} MCP servers from mcp-config.ts`);
     }
   }
 } catch (err) {
@@ -97,9 +91,7 @@ export const ALLOWED_PATHS: string[] = allowedPathsStr
   : defaultAllowedPaths;
 
 function buildSafetyPrompt(allowedPaths: string[]): string {
-  const pathsList = allowedPaths
-    .map((p) => `   - ${p} (and subdirectories)`)
-    .join("\n");
+  const pathsList = allowedPaths.map((p) => `   - ${p} (and subdirectories)`).join("\n");
 
   return `
 CRITICAL SAFETY RULES FOR TELEGRAM BOT:
@@ -171,10 +163,7 @@ let TRANSCRIPTION_CONTEXT = "";
 if (process.env.TRANSCRIPTION_CONTEXT_FILE) {
   try {
     if (existsSync(process.env.TRANSCRIPTION_CONTEXT_FILE)) {
-      TRANSCRIPTION_CONTEXT = readFileSync(
-        process.env.TRANSCRIPTION_CONTEXT_FILE,
-        "utf-8"
-      ).trim();
+      TRANSCRIPTION_CONTEXT = readFileSync(process.env.TRANSCRIPTION_CONTEXT_FILE, "utf-8").trim();
     }
   } catch {
     // File not found or unreadable
@@ -189,14 +178,11 @@ export const TRANSCRIPTION_AVAILABLE = !!OPENAI_API_KEY;
 
 // ============== Thinking Keywords ==============
 
-const thinkingKeywordsStr =
-  process.env.THINKING_KEYWORDS || "think,reason,analyze";
+const thinkingKeywordsStr = process.env.THINKING_KEYWORDS || "think,reason,analyze";
 const thinkingDeepKeywordsStr =
   process.env.THINKING_DEEP_KEYWORDS || "ultrathink,think hard,think deeply";
 
-export const THINKING_KEYWORDS = thinkingKeywordsStr
-  .split(",")
-  .map((k) => k.trim().toLowerCase());
+export const THINKING_KEYWORDS = thinkingKeywordsStr.split(",").map((k) => k.trim().toLowerCase());
 export const THINKING_DEEP_KEYWORDS = thinkingDeepKeywordsStr
   .split(",")
   .map((k) => k.trim().toLowerCase());
@@ -216,21 +202,14 @@ export const BUTTON_LABEL_MAX_LENGTH = 30;
 
 export const AUDIT_LOG_PATH =
   process.env.AUDIT_LOG_PATH || resolve(tmpdir(), "claude-telegram-audit.log");
-export const AUDIT_LOG_JSON =
-  (process.env.AUDIT_LOG_JSON || "false").toLowerCase() === "true";
+export const AUDIT_LOG_JSON = (process.env.AUDIT_LOG_JSON || "false").toLowerCase() === "true";
 
 // ============== Rate Limiting ==============
 
 export const RATE_LIMIT_ENABLED =
   (process.env.RATE_LIMIT_ENABLED || "true").toLowerCase() === "true";
-export const RATE_LIMIT_REQUESTS = parseInt(
-  process.env.RATE_LIMIT_REQUESTS || "20",
-  10
-);
-export const RATE_LIMIT_WINDOW = parseInt(
-  process.env.RATE_LIMIT_WINDOW || "60",
-  10
-);
+export const RATE_LIMIT_REQUESTS = parseInt(process.env.RATE_LIMIT_REQUESTS || "20", 10);
+export const RATE_LIMIT_WINDOW = parseInt(process.env.RATE_LIMIT_WINDOW || "60", 10);
 
 // ============== File Paths ==============
 
@@ -275,12 +254,8 @@ if (!TELEGRAM_TOKEN) {
 }
 
 if (ALLOWED_USERS.length === 0) {
-  console.error(
-    "ERROR: TELEGRAM_ALLOWED_USERS environment variable is required"
-  );
+  console.error("ERROR: TELEGRAM_ALLOWED_USERS environment variable is required");
   process.exit(1);
 }
 
-console.log(
-  `Config loaded: ${ALLOWED_USERS.length} allowed users, working dir: ${WORKING_DIR}`
-);
+console.log(`Config loaded: ${ALLOWED_USERS.length} allowed users, working dir: ${WORKING_DIR}`);

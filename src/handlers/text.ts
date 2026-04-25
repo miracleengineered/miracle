@@ -7,18 +7,9 @@ import { InputFile } from "grammy";
 import { session } from "../session";
 import { ALLOWED_USERS } from "../config";
 import { isAuthorized, rateLimiter } from "../security";
-import {
-  auditLog,
-  auditLogRateLimit,
-  checkInterrupt,
-  startTypingIndicator,
-} from "../utils";
+import { auditLog, auditLogRateLimit, checkInterrupt, startTypingIndicator } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
-import {
-  extractGsdCommands,
-  extractNumberedOptions,
-  buildActionKeyboard,
-} from "../formatting";
+import { extractGsdCommands, extractNumberedOptions, buildActionKeyboard } from "../formatting";
 import { getLastActionBar, setLastActionBar } from "./commands";
 import { buildDigestContextPrefix } from "./digest-context";
 
@@ -51,9 +42,7 @@ export async function handleText(ctx: Context): Promise<void> {
   const [allowed, retryAfter] = rateLimiter.check(userId);
   if (!allowed) {
     await auditLogRateLimit(userId, username, retryAfter!);
-    await ctx.reply(
-      `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-    );
+    await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
     return;
   }
 
@@ -61,7 +50,9 @@ export async function handleText(ctx: Context): Promise<void> {
   if (session.isRunning) {
     const queued = session.queueMessage({ ctx });
     if (queued) {
-      await ctx.reply("Queued — will process after current request.", { disable_notification: true });
+      await ctx.reply("Queued — will process after current request.", {
+        disable_notification: true,
+      });
     } else {
       await ctx.reply("Queue full. Please wait for the current request to finish.");
     }
@@ -74,8 +65,7 @@ export async function handleText(ctx: Context): Promise<void> {
   // 5. Set conversation title from first message (if new session)
   if (!session.isActive) {
     // Truncate title to ~50 chars
-    const title =
-      message.length > 50 ? message.slice(0, 47) + "..." : message;
+    const title = message.length > 50 ? message.slice(0, 47) + "..." : message;
     session.conversationTitle = title;
   }
 
@@ -110,7 +100,7 @@ export async function handleText(ctx: Context): Promise<void> {
         userId,
         statusCallback,
         chatId,
-        ctx
+        ctx,
       );
 
       // 10. Audit log
@@ -128,22 +118,24 @@ export async function handleText(ctx: Context): Promise<void> {
       // 10b. Delete processing message before context bar
       try {
         await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-      } catch { /* already deleted */ }
+      } catch {
+        /* already deleted */
+      }
 
       // 10d. Show context bar + action buttons
       {
         const pct = session.contextPercent;
-        const barText = pct !== null
-          ? (() => {
-              const clamped = Math.min(pct, 100);
-              const filled = Math.min(Math.round(clamped / 10), 10);
-              return "█".repeat(filled) + "░".repeat(10 - filled) + ` ${clamped}%`;
-            })()
-          : null;
+        const barText =
+          pct !== null
+            ? (() => {
+                const clamped = Math.min(pct, 100);
+                const filled = Math.min(Math.round(clamped / 10), 10);
+                return "█".repeat(filled) + "░".repeat(10 - filled) + ` ${clamped}%`;
+              })()
+            : null;
 
         // Extract GSD suggestions and numbered options from response
-        const { commands: gsdCmds, hasClearSuggestion } =
-          extractGsdCommands(response);
+        const { commands: gsdCmds, hasClearSuggestion } = extractGsdCommands(response);
         const numberedOpts = extractNumberedOptions(response);
         const keyboard = buildActionKeyboard({
           gsdCommands: gsdCmds,
@@ -182,9 +174,7 @@ export async function handleText(ctx: Context): Promise<void> {
 
       // Retry on Claude Code crash (not user cancellation)
       if (isClaudeCodeCrash && attempt < MAX_RETRIES) {
-        console.log(
-          `Claude Code crashed, retrying (attempt ${attempt + 2}/${MAX_RETRIES + 1})...`
-        );
+        console.log(`Claude Code crashed, retrying (attempt ${attempt + 2}/${MAX_RETRIES + 1})...`);
         await session.kill(); // Clear corrupted session
         await ctx.reply(`⚠️ Claude crashed, retrying...`);
         // Reset state for retry
@@ -199,7 +189,9 @@ export async function handleText(ctx: Context): Promise<void> {
       // Delete processing message before sending error
       try {
         await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-      } catch { /* already deleted */ }
+      } catch {
+        /* already deleted */
+      }
 
       // Check if it was a cancellation
       if (errorStr.includes("abort") || errorStr.includes("cancel")) {

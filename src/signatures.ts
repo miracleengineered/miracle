@@ -17,10 +17,7 @@
 export const ENGINEERED = "Miracle, Engineered." as const;
 export const DELIVERED = "Miracle, Delivered." as const;
 export const BLOCKED = "Miracle, Blocked." as const;
-export type SignaturePhrase =
-  | typeof ENGINEERED
-  | typeof DELIVERED
-  | typeof BLOCKED;
+export type SignaturePhrase = typeof ENGINEERED | typeof DELIVERED | typeof BLOCKED;
 
 export type SignatureEvent = {
   phrase: SignaturePhrase;
@@ -133,10 +130,7 @@ export function candidatesForEvent(
  * Used by the outer catch block in session.ts when the stream loop itself throws
  * (non-zero exit, parse error, network hiccup) without producing a result event.
  */
-export function candidateForOuterError(
-  sessionId: string | null,
-  turnId: string,
-): SignatureEvent {
+export function candidateForOuterError(sessionId: string | null, turnId: string): SignatureEvent {
   const sid = sessionId ?? "no-session";
   return {
     phrase: BLOCKED,

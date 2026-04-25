@@ -4,11 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  signCallback,
-  verifyCallback,
-  generateNonce,
-} from "../src/miracle/approval-card";
+import { signCallback, verifyCallback, generateNonce } from "../src/miracle/approval-card";
 
 describe("HMAC callback (sign + verify)", () => {
   beforeEach(() => {
@@ -49,11 +45,7 @@ describe("HMAC callback (sign + verify)", () => {
   });
 
   it("rejects a verdict swap without re-signing", () => {
-    const signed = signCallback(
-      "abcdabcd12345678",
-      "12341234567890ab",
-      "A",
-    );
+    const signed = signCallback("abcdabcd12345678", "12341234567890ab", "A");
     // Substitute verdict but keep the original Approve signature.
     const parts = signed.encoded.split(":");
     parts[3] = "R";

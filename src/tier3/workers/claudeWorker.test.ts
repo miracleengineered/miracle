@@ -110,18 +110,12 @@ function createChildJob(client: NotebookClient, ask: string, model = "sonnet"): 
   return client.createJob({ parentId: parent.id, payload: childPayload });
 }
 
-async function waitForTerminal(
-  updateCalls: Array<{ status: JobStatus }>,
-): Promise<void> {
+async function waitForTerminal(updateCalls: Array<{ status: JobStatus }>): Promise<void> {
   // driveSubprocess runs async and depends on I/O loop turns (stream 'end',
   // readline flush); a microtask flush isn't enough. vi.waitFor polls until
   // the updateStatus call lands.
   await vi.waitFor(() => {
-    expect(
-      updateCalls.some(
-        (c) => c.status === "completed" || c.status === "failed",
-      ),
-    ).toBe(true);
+    expect(updateCalls.some((c) => c.status === "completed" || c.status === "failed")).toBe(true);
   });
 }
 
@@ -140,9 +134,7 @@ describe("createClaudeWorker", () => {
       exitCode: 0,
     });
 
-    const spawn = vi.fn(
-      (_cmd: string, _args: readonly string[], _opts: SpawnOptions) => fakeChild,
-    );
+    const spawn = vi.fn((_cmd: string, _args: readonly string[], _opts: SpawnOptions) => fakeChild);
 
     const worker = createClaudeWorker({
       client,
@@ -167,9 +159,7 @@ describe("createClaudeWorker", () => {
       expect(updateCalls.some((c) => c.status === "completed")).toBe(true);
     });
 
-    expect(correlator.registerCalls).toEqual([
-      { jobId: job.id, sessionId: "sess-abc" },
-    ]);
+    expect(correlator.registerCalls).toEqual([{ jobId: job.id, sessionId: "sess-abc" }]);
 
     const completed = updateCalls.find((c) => c.status === "completed");
     expect(completed?.jobId).toBe(job.id);
@@ -240,9 +230,7 @@ describe("createClaudeWorker", () => {
     const job = createChildJob(client, "Silent run");
 
     const fakeChild = makeFakeChild({
-      stdoutChunks: [
-        `{"type":"assistant","session_id":"sess-silent","message":{"content":[]}}\n`,
-      ],
+      stdoutChunks: [`{"type":"assistant","session_id":"sess-silent","message":{"content":[]}}\n`],
       exitCode: 0,
     });
 
@@ -329,9 +317,7 @@ describe("createClaudeWorker", () => {
 
     const completed = updateCalls.find((c) => c.status === "completed");
     expect(completed?.result).toBe("ok");
-    expect(correlator.registerCalls).toEqual([
-      { jobId: job.id, sessionId: "sess-noise" },
-    ]);
+    expect(correlator.registerCalls).toEqual([{ jobId: job.id, sessionId: "sess-noise" }]);
   });
 
   it("passes --resume <id> when conversationSessionId is set on the payload", async () => {
@@ -353,15 +339,11 @@ describe("createClaudeWorker", () => {
     });
 
     const fakeChild = makeFakeChild({
-      stdoutChunks: [
-        `{"type":"result","session_id":"fixture-session-xyz","result":"ok"}\n`,
-      ],
+      stdoutChunks: [`{"type":"result","session_id":"fixture-session-xyz","result":"ok"}\n`],
       exitCode: 0,
     });
 
-    const spawn = vi.fn(
-      (_cmd: string, _args: readonly string[], _opts: SpawnOptions) => fakeChild,
-    );
+    const spawn = vi.fn((_cmd: string, _args: readonly string[], _opts: SpawnOptions) => fakeChild);
 
     const worker = createClaudeWorker({
       client,
@@ -384,9 +366,7 @@ describe("createClaudeWorker", () => {
     const correlator2 = makeRecordingCorrelator();
     const job2 = createChildJob(client2, "No resume here");
     const fakeChild2 = makeFakeChild({
-      stdoutChunks: [
-        `{"type":"result","session_id":"sess-noresume","result":"ok"}\n`,
-      ],
+      stdoutChunks: [`{"type":"result","session_id":"sess-noresume","result":"ok"}\n`],
       exitCode: 0,
     });
     const spawn2 = vi.fn(

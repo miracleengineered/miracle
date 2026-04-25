@@ -48,14 +48,14 @@ describe("SqliteNotebookClient.recoverStaleRunning (Fix 3.D)", () => {
   }
 
   it("flips running jobs older than maxAge across all kinds", () => {
-    insertJob("j1", "orchestrator", "running", 30 * 60 * 1000);   // 30 min old
-    insertJob("j2", "leaf", "running", 15 * 60 * 1000);           // 15 min old
-    insertJob("j3", "miracle", "running", 2 * 60 * 1000);         // 2 min old (fresh)
-    insertJob("j4", "leaf", "pending", 30 * 60 * 1000);           // not running
+    insertJob("j1", "orchestrator", "running", 30 * 60 * 1000); // 30 min old
+    insertJob("j2", "leaf", "running", 15 * 60 * 1000); // 15 min old
+    insertJob("j3", "miracle", "running", 2 * 60 * 1000); // 2 min old (fresh)
+    insertJob("j4", "leaf", "pending", 30 * 60 * 1000); // not running
 
     const nb = createNotebookClient({ backend: "sqlite", dbPath });
-    const changed = nb.recoverStaleRunning!(10 * 60 * 1000);       // 10 min threshold
-    expect(changed).toBe(2);  // j1 and j2 flipped; j3 still fresh; j4 not running
+    const changed = nb.recoverStaleRunning!(10 * 60 * 1000); // 10 min threshold
+    expect(changed).toBe(2); // j1 and j2 flipped; j3 still fresh; j4 not running
 
     const db = new Database(dbPath);
     const rows = db

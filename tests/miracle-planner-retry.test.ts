@@ -43,7 +43,9 @@ function makeResultMessage(
   };
 }
 
-function asyncGenerator<T>(items: T[]): AsyncIterable<T> & { return?: () => Promise<IteratorResult<T>> } {
+function asyncGenerator<T>(
+  items: T[],
+): AsyncIterable<T> & { return?: () => Promise<IteratorResult<T>> } {
   return {
     async *[Symbol.asyncIterator]() {
       for (const item of items) yield item;
@@ -145,9 +147,7 @@ describe("Planner Zod-retry (Gate 2 smoke #7)", () => {
   it("tolerates ```json code fences in the output", async () => {
     const fenced = `\`\`\`json\n${validPlanJson}\n\`\`\``;
     mockQuery.mockReturnValueOnce(
-      asyncGenerator([makeResultMessage(fenced, { costUsd: 0.01 })]) as ReturnType<
-        typeof query
-      >,
+      asyncGenerator([makeResultMessage(fenced, { costUsd: 0.01 })]) as ReturnType<typeof query>,
     );
 
     const result = await runPlanner({ intent: "summarize" });

@@ -142,8 +142,8 @@ export async function runOrchestrator(
 
     const firstChildJobId = childJobs[0]?.job.id;
     const conversationSessionId = firstChildJobId
-      ? capturedSessionIds.get(firstChildJobId) ?? opts.conversationSessionId ?? null
-      : opts.conversationSessionId ?? null;
+      ? (capturedSessionIds.get(firstChildJobId) ?? opts.conversationSessionId ?? null)
+      : (opts.conversationSessionId ?? null);
 
     client.updateStatus(parentJob.id, status, {
       output,

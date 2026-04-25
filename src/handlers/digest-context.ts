@@ -41,13 +41,9 @@ function cacheDir(): string {
 // __filename = /<repo-root>/bot/src/handlers/digest-context.ts
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const BOT_ROOT = resolve(__dirname, "..", "..");        // <repo>/bot
-const REPO_ROOT = resolve(BOT_ROOT, "..");              // <repo>
-const SUBJECT_SEARCH_SCRIPT = resolve(
-  REPO_ROOT,
-  "digest",
-  "subject-search.ts",
-);
+const BOT_ROOT = resolve(__dirname, "..", ".."); // <repo>/bot
+const REPO_ROOT = resolve(BOT_ROOT, ".."); // <repo>
+const SUBJECT_SEARCH_SCRIPT = resolve(REPO_ROOT, "digest", "subject-search.ts");
 const TSX_BIN = resolve(BOT_ROOT, "node_modules", ".bin", "tsx");
 const SUBJECT_SEARCH_TIMEOUT_MS = 32_000; // slightly over the script's internal 30s
 
@@ -79,15 +75,11 @@ export function readSnapshot(filename: string): Snapshot | null {
  * sending to Claude. Returns "" if no drill-down pattern matched or if lookup
  * failed — caller should pass the raw message through unchanged in that case.
  */
-export async function buildDigestContextPrefix(
-  message: string,
-): Promise<string> {
+export async function buildDigestContextPrefix(message: string): Promise<string> {
   const trimmed = message.trim();
 
   // Section drill-down: optional verb + digit
-  const mSection = trimmed.match(
-    /^(?:more on |expand |tell me (?:more )?about )?(\d+)\s*\??$/i,
-  );
+  const mSection = trimmed.match(/^(?:more on |expand |tell me (?:more )?about )?(\d+)\s*\??$/i);
 
   // Module-name drill-down
   const mModule = trimmed.match(
@@ -127,9 +119,7 @@ export async function buildDigestContextPrefix(
         section = fromMorning;
         sourceSnapshot = morning;
       } else {
-        const fromYesterday = yesterday?.sections?.find(
-          (s) => s.module === alias,
-        );
+        const fromYesterday = yesterday?.sections?.find((s) => s.module === alias);
         if (fromYesterday) {
           section = fromYesterday;
           sourceSnapshot = yesterday;

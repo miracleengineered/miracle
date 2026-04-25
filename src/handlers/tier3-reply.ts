@@ -117,9 +117,7 @@ const MAX_RETRIES = 1; // matches MVP text.ts:94
  * (non-crash subtask errors, orchestrator exceptions) are not retried
  * and bubble up via the returned result or a thrown error.
  */
-export async function runTier3JobWithRetry(
-  cfg: Tier3JobConfig,
-): Promise<Tier3JobOutcome> {
+export async function runTier3JobWithRetry(cfg: Tier3JobConfig): Promise<Tier3JobOutcome> {
   const { ctx, runtime, ask, startWorker, conversationSessionId, onCrashRetry } = cfg;
   const chatId = ctx.chat?.id;
   if (!chatId) {
@@ -198,10 +196,7 @@ export async function runTier3JobWithRetry(
  * call it directly in their catch branch so the Processing message
  * doesn't linger after an error.
  */
-export async function cleanupStreamingState(
-  ctx: Context,
-  state: StreamingState,
-): Promise<void> {
+export async function cleanupStreamingState(ctx: Context, state: StreamingState): Promise<void> {
   for (const msg of state.toolMessages) {
     try {
       await ctx.api.deleteMessage(msg.chat.id, msg.message_id);
@@ -329,14 +324,7 @@ export interface Tier3EventHandlerConfig {
 }
 
 export function createTier3OnEvent(cfg: Tier3EventHandlerConfig): OnEvent {
-  const {
-    ctx,
-    chatId,
-    statusCallback,
-    contextRef,
-    conversationSessionId,
-    turnId,
-  } = cfg;
+  const { ctx, chatId, statusCallback, contextRef, conversationSessionId, turnId } = cfg;
 
   // Track session_id locally for signature dedup keys. The claudeWorker
   // already registers it with the correlator for routing; this is a

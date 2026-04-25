@@ -82,7 +82,7 @@ async function downloadDocument(ctx: Context): Promise<string> {
 
   // Download
   const response = await fetch(
-    `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+    `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`,
   );
   const buffer = await response.arrayBuffer();
   writeFileSync(docPath, Buffer.from(buffer));
@@ -93,10 +93,7 @@ async function downloadDocument(ctx: Context): Promise<string> {
 /**
  * Extract text from a document.
  */
-async function extractText(
-  filePath: string,
-  mimeType?: string
-): Promise<string> {
+async function extractText(filePath: string, mimeType?: string): Promise<string> {
   const fileName = filePath.split("/").pop() || "";
   const extension = "." + (fileName.split(".").pop() || "").toLowerCase();
 
@@ -146,10 +143,7 @@ function getArchiveExtension(fileName: string): string {
 /**
  * Extract an archive to a temp directory.
  */
-async function extractArchive(
-  archivePath: string,
-  fileName: string
-): Promise<string> {
+async function extractArchive(archivePath: string, fileName: string): Promise<string> {
   const ext = getArchiveExtension(fileName);
   const extractDir = `${TEMP_DIR}/archive_${Date.now()}`;
   mkdirSync(extractDir, { recursive: true });
@@ -164,7 +158,7 @@ async function extractArchive(
       // Fallback to PowerShell Expand-Archive
       execSync(
         `powershell.exe -NoProfile -Command "Expand-Archive -Force -Path '${archivePath}' -DestinationPath '${extractDir}'"`,
-        { stdio: ["pipe", "pipe", "pipe"] }
+        { stdio: ["pipe", "pipe", "pipe"] },
       );
     }
   } else if (ext === ".tar" || ext === ".tar.gz" || ext === ".tgz") {
@@ -208,9 +202,7 @@ function buildFileTreeSync(dir: string): string[] {
 /**
  * Extract text content from archive files.
  */
-async function extractArchiveContent(
-  extractDir: string
-): Promise<{
+async function extractArchiveContent(extractDir: string): Promise<{
   tree: string[];
   contents: Array<{ name: string; content: string }>;
 }> {
@@ -259,7 +251,7 @@ async function processArchive(
   caption: string | undefined,
   userId: number,
   username: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   const stopProcessing = session.startProcessing();
   const typing = startTypingIndicator(ctx);
@@ -281,7 +273,7 @@ async function processArchive(
       statusMsg.chat.id,
       statusMsg.message_id,
       `📦 Extracted <b>${fileName}</b>: ${tree.length} files, ${contents.length} readable`,
-      { parse_mode: "HTML" }
+      { parse_mode: "HTML" },
     );
 
     // Build prompt
@@ -298,8 +290,7 @@ async function processArchive(
     // Set conversation title (if new session)
     if (!session.isActive) {
       const rawTitle = caption || `[Archive: ${fileName}]`;
-      const title =
-        rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
+      const title = rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
       session.conversationTitle = title;
     }
 
@@ -316,21 +307,17 @@ async function processArchive(
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     // Delete processing message after response
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
 
-    await auditLog(
-      userId,
-      username,
-      "ARCHIVE",
-      `[${fileName}] ${caption || ""}`,
-      response
-    );
+    await auditLog(userId, username, "ARCHIVE", `[${fileName}] ${caption || ""}`, response);
 
     // Cleanup
     rmSync(extractDir, { recursive: true, force: true });
@@ -365,7 +352,7 @@ async function processDocuments(
   caption: string | undefined,
   userId: number,
   username: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   // Mark processing started
   const stopProcessing = session.startProcessing();
@@ -390,8 +377,7 @@ async function processDocuments(
   if (!session.isActive) {
     const docName = documents[0]?.name || "[Document]";
     const rawTitle = caption || `[Document: ${docName}]`;
-    const title =
-      rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
+    const title = rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
     session.conversationTitle = title;
   }
 
@@ -412,26 +398,30 @@ async function processDocuments(
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     // Delete processing message after response
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
 
     await auditLog(
       userId,
       username,
       "DOCUMENT",
       `[${documents.length} docs] ${caption || ""}`,
-      response
+      response,
     );
   } catch (error) {
     // Delete processing message before error reply
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
     await handleProcessingError(ctx, error, state.toolMessages);
   } finally {
     stopProcessing();
@@ -448,7 +438,7 @@ async function processDocumentPaths(
   caption: string | undefined,
   userId: number,
   username: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   // Extract text from all documents
   const documents: Array<{ path: string; name: string; content: string }> = [];
@@ -501,8 +491,7 @@ export async function handleDocument(ctx: Context): Promise<void> {
   const fileName = doc.file_name || "";
   const extension = "." + (fileName.split(".").pop() || "").toLowerCase();
   const isPdf = doc.mime_type === "application/pdf" || extension === ".pdf";
-  const isText =
-    TEXT_EXTENSIONS.includes(extension) || doc.mime_type?.startsWith("text/");
+  const isText = TEXT_EXTENSIONS.includes(extension) || doc.mime_type?.startsWith("text/");
   const isArchiveFile = isArchive(fileName);
 
   // Check if it's an audio file sent as a document
@@ -513,9 +502,7 @@ export async function handleDocument(ctx: Context): Promise<void> {
     const [allowed, retryAfter] = rateLimiter.check(userId);
     if (!allowed) {
       await auditLogRateLimit(userId, username, retryAfter!);
-      await ctx.reply(
-        `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-      );
+      await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
       return;
     }
 
@@ -537,8 +524,8 @@ export async function handleDocument(ctx: Context): Promise<void> {
     await ctx.reply(
       `❌ Unsupported file type: ${extension || doc.mime_type}\n\n` +
         `Supported: PDF, archives (${ARCHIVE_EXTENSIONS.join(
-          ", "
-        )}), ${TEXT_EXTENSIONS.join(", ")}`
+          ", ",
+        )}), ${TEXT_EXTENSIONS.join(", ")}`,
     );
     return;
   }
@@ -559,21 +546,11 @@ export async function handleDocument(ctx: Context): Promise<void> {
     const [allowed, retryAfter] = rateLimiter.check(userId);
     if (!allowed) {
       await auditLogRateLimit(userId, username, retryAfter!);
-      await ctx.reply(
-        `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-      );
+      await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
       return;
     }
 
-    await processArchive(
-      ctx,
-      docPath,
-      fileName,
-      ctx.message?.caption,
-      userId,
-      username,
-      chatId
-    );
+    await processArchive(ctx, docPath, fileName, ctx.message?.caption, userId, username, chatId);
     return;
   }
 
@@ -584,9 +561,7 @@ export async function handleDocument(ctx: Context): Promise<void> {
     const [allowed, retryAfter] = rateLimiter.check(userId);
     if (!allowed) {
       await auditLogRateLimit(userId, username, retryAfter!);
-      await ctx.reply(
-        `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-      );
+      await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
       return;
     }
 
@@ -598,13 +573,11 @@ export async function handleDocument(ctx: Context): Promise<void> {
         ctx.message?.caption,
         userId,
         username,
-        chatId
+        chatId,
       );
     } catch (error) {
       console.error("Failed to extract document:", error);
-      await ctx.reply(
-        `❌ Failed to process document: ${String(error).slice(0, 100)}`
-      );
+      await ctx.reply(`❌ Failed to process document: ${String(error).slice(0, 100)}`);
     }
     return;
   }
@@ -616,6 +589,6 @@ export async function handleDocument(ctx: Context): Promise<void> {
     ctx,
     userId,
     username,
-    processDocumentPaths
+    processDocumentPaths,
   );
 }

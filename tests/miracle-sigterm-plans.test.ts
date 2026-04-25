@@ -2,11 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { tmpdir } from "node:os";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import {
-  getSliceDb,
-  _resetSliceDbForTests,
-  markRunningPlansAsShutdown,
-} from "../src/miracle/db";
+import { getSliceDb, _resetSliceDbForTests, markRunningPlansAsShutdown } from "../src/miracle/db";
 
 describe("markRunningPlansAsShutdown (Fix 3.K SIGTERM)", () => {
   let tmp: string;
@@ -44,9 +40,10 @@ describe("markRunningPlansAsShutdown (Fix 3.K SIGTERM)", () => {
     expect(changed).toBe(2);
 
     const db = getSliceDb();
-    const rows = db
-      .prepare("SELECT id, status FROM miracle_plans ORDER BY id")
-      .all() as { id: string; status: string }[];
+    const rows = db.prepare("SELECT id, status FROM miracle_plans ORDER BY id").all() as {
+      id: string;
+      status: string;
+    }[];
     expect(rows).toEqual([
       { id: "p1", status: "failed_shutdown" },
       { id: "p2", status: "failed_shutdown" },

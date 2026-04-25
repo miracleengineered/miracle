@@ -12,11 +12,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import {
-  query,
-  InMemorySessionStore,
-  type SessionKey,
-} from "@anthropic-ai/claude-agent-sdk";
+import { query, InMemorySessionStore, type SessionKey } from "@anthropic-ai/claude-agent-sdk";
 
 describe("claude-agent-sdk smoke", () => {
   it("exports query as a function", () => {

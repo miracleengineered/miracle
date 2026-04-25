@@ -23,12 +23,7 @@
 // Never touches ~/.miracle/queue.db (production).
 
 import { spawn, type ChildProcess } from "node:child_process";
-import {
-  mkdtempSync,
-  rmSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
@@ -90,76 +85,70 @@ suite("tier-3 full chain (claude subprocess → hooks → correlator → noteboo
     }
   });
 
-  it(
-    "worker hooks get correlated to job_id end-to-end",
-    async () => {
-      const port = await getFreePort();
-      const notebook = createNotebookClient({
-        backend: "sqlite",
-        dbPath: TEST_DB_PATH,
-      }) as Tier3Notebook;
+  it("worker hooks get correlated to job_id end-to-end", async () => {
+    const port = await getFreePort();
+    const notebook = createNotebookClient({
+      backend: "sqlite",
+      dbPath: TEST_DB_PATH,
+    }) as Tier3Notebook;
 
-      const settingsPath = join(tmpRoot, "e2e-settings.json");
-      writeFileSync(settingsPath, JSON.stringify(buildHookSettings(port)));
+    const settingsPath = join(tmpRoot, "e2e-settings.json");
+    writeFileSync(settingsPath, JSON.stringify(buildHookSettings(port)));
 
-      runtime = createTier3Runtime({ notebook, port });
-      await runtime.listener.start();
+    runtime = createTier3Runtime({ notebook, port });
+    await runtime.listener.start();
 
-      let capturedChildJobId: string | null = null;
+    let capturedChildJobId: string | null = null;
 
-      const result = await runtime.runJob("Say hi.", {
-        startWorker: (job) => {
-          capturedChildJobId = job.id;
-          subprocess = spawn(
-            "claude",
-            [
-              "-p",
-              "Say hi.",
-              "--settings",
-              settingsPath,
-              "--output-format",
-              "stream-json",
-              "--verbose",
-              "--permission-mode",
-              "bypassPermissions",
-            ],
-            {
-              stdio: ["ignore", "pipe", "pipe"],
-              cwd: tmpRoot,
-            },
-          );
+    const result = await runtime.runJob("Say hi.", {
+      startWorker: (job) => {
+        capturedChildJobId = job.id;
+        subprocess = spawn(
+          "claude",
+          [
+            "-p",
+            "Say hi.",
+            "--settings",
+            settingsPath,
+            "--output-format",
+            "stream-json",
+            "--verbose",
+            "--permission-mode",
+            "bypassPermissions",
+          ],
+          {
+            stdio: ["ignore", "pipe", "pipe"],
+            cwd: tmpRoot,
+          },
+        );
 
-          subprocess.on("exit", (code) => {
-            if (code === 0) {
-              notebook.updateStatus(job.id, "completed", { exit: 0 });
-            } else {
-              notebook.updateStatus(job.id, "failed", { exit: code });
-            }
-          });
+        subprocess.on("exit", (code) => {
+          if (code === 0) {
+            notebook.updateStatus(job.id, "completed", { exit: 0 });
+          } else {
+            notebook.updateStatus(job.id, "failed", { exit: code });
+          }
+        });
 
-          return { stdout: subprocess.stdout };
-        },
-      });
+        return { stdout: subprocess.stdout };
+      },
+    });
 
-      expect(result.status).toBe("completed");
-      expect(capturedChildJobId).not.toBeNull();
+    expect(result.status).toBe("completed");
+    expect(capturedChildJobId).not.toBeNull();
 
-      // CC hooks may still be in flight when the subprocess exits; poll
-      // the DB up to 5 s for rows to land before asserting.
-      const rows = await waitForHookEvents(TEST_DB_PATH, 5_000);
-      expect(rows.length).toBeGreaterThan(0);
+    // CC hooks may still be in flight when the subprocess exits; poll
+    // the DB up to 5 s for rows to land before asserting.
+    const rows = await waitForHookEvents(TEST_DB_PATH, 5_000);
+    expect(rows.length).toBeGreaterThan(0);
 
-      const correlatedRows = rows.filter(
-        (r) => r.job_id === capturedChildJobId,
-      );
-      expect(correlatedRows.length).toBeGreaterThan(0);
+    const correlatedRows = rows.filter((r) => r.job_id === capturedChildJobId);
+    expect(correlatedRows.length).toBeGreaterThan(0);
 
-      // Sanity: every correlated row references the same session_id.
-      const sessions = new Set(correlatedRows.map((r) => r.session_id));
-      expect(sessions.size).toBe(1);
-    },
-    60_000,
-  );
+    // Sanity: every correlated row references the same session_id.
+    const sessions = new Set(correlatedRows.map((r) => r.session_id));
+    expect(sessions.size).toBe(1);
+  }, 60_000);
 });
 
 function buildHookSettings(port: number): {
@@ -180,10 +169,7 @@ function buildHookSettings(port: number): {
   };
 }
 
-async function waitForHookEvents(
-  dbPath: string,
-  timeoutMs: number,
-): Promise<HookEventRow[]> {
+async function waitForHookEvents(dbPath: string, timeoutMs: number): Promise<HookEventRow[]> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const rows = readHookEventsIfExists(dbPath);

@@ -8,9 +8,7 @@ describe("withSliceApiKey", () => {
   });
 
   it("throws loudly if ANTHROPIC_API_KEY_SLICE is not set", async () => {
-    await expect(
-      withSliceApiKey(async () => "ok"),
-    ).rejects.toThrow(/ANTHROPIC_API_KEY_SLICE/);
+    await expect(withSliceApiKey(async () => "ok")).rejects.toThrow(/ANTHROPIC_API_KEY_SLICE/);
   });
 
   it("swaps ANTHROPIC_API_KEY to the slice key for the callback duration", async () => {

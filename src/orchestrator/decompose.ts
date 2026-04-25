@@ -5,9 +5,7 @@ function cleanSegment(segment: string): string {
 }
 
 function extractNumberedList(ask: string): string[] {
-  const matches = [
-    ...ask.matchAll(/(?:^|\n)\s*\d+[.)]\s+([\s\S]*?)(?=(?:\n\s*\d+[.)]\s+)|$)/g),
-  ];
+  const matches = [...ask.matchAll(/(?:^|\n)\s*\d+[.)]\s+([\s\S]*?)(?=(?:\n\s*\d+[.)]\s+)|$)/g)];
 
   return matches.map((match) => cleanSegment(match[1] ?? "")).filter(Boolean);
 }

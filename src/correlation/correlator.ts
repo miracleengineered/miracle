@@ -1,8 +1,6 @@
 import type { NotebookClient } from "../notebook/client.js";
 
-export type CorrelatorNotebookClient = Required<
-  Pick<NotebookClient, "backfillHookEvents">
->;
+export type CorrelatorNotebookClient = Required<Pick<NotebookClient, "backfillHookEvents">>;
 
 export interface Correlator {
   // Called by the orchestrator when a worker subprocess first emits a session_id.
@@ -92,8 +90,10 @@ export class LiveCorrelator implements Correlator {
   }
 
   private async backfill(sessionId: string, jobId: string): Promise<void> {
-    Promise.resolve(this.config.notebook.backfillHookEvents(sessionId, jobId))
-      .catch((err: unknown) => console.warn('[WARN] Hook backfill failed for session', sessionId, ':', err));
+    Promise.resolve(this.config.notebook.backfillHookEvents(sessionId, jobId)).catch(
+      (err: unknown) =>
+        console.warn("[WARN] Hook backfill failed for session", sessionId, ":", err),
+    );
   }
 }
 

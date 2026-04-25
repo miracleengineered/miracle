@@ -14,10 +14,7 @@ import type { ModelName, RoutingTable } from "../types/phase3.js";
 
 export type { ModelName, ModelRoute, RoutingTable } from "../types/phase3.js";
 
-const tablePath = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "routing-table.json",
-);
+const tablePath = join(dirname(fileURLToPath(import.meta.url)), "routing-table.json");
 
 const table: RoutingTable = JSON.parse(readFileSync(tablePath, "utf8")) as RoutingTable;
 

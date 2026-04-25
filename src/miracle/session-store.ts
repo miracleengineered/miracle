@@ -17,11 +17,7 @@
  * aren't a concern in the slice scope.
  */
 
-import type {
-  SessionKey,
-  SessionStore,
-  SessionStoreEntry,
-} from "@anthropic-ai/claude-agent-sdk";
+import type { SessionKey, SessionStore, SessionStoreEntry } from "@anthropic-ai/claude-agent-sdk";
 import { getSliceDb } from "./db";
 
 type SqliteDatabase = import("better-sqlite3").Database;
@@ -81,14 +77,10 @@ export class SqliteSessionStore implements SessionStore {
   }
 
   async delete(key: SessionKey): Promise<void> {
-    this.db
-      .prepare("DELETE FROM miracle_sessions WHERE session_key = ?")
-      .run(keyToString(key));
+    this.db.prepare("DELETE FROM miracle_sessions WHERE session_key = ?").run(keyToString(key));
   }
 
-  async listSessions(
-    projectKey: string,
-  ): Promise<Array<{ sessionId: string; mtime: number }>> {
+  async listSessions(projectKey: string): Promise<Array<{ sessionId: string; mtime: number }>> {
     // Encode as the prefix of the JSON array form so we match
     // keys that share projectKey regardless of sessionId/subpath.
     const prefix = JSON.stringify([projectKey]).slice(0, -1); // e.g. '["miracle-slice"' (trailing ] stripped)
@@ -101,11 +93,7 @@ export class SqliteSessionStore implements SessionStore {
     const sessions = new Map<string, number>();
     for (const row of rows) {
       try {
-        const [pk, sessionId] = JSON.parse(row.session_key) as [
-          string,
-          string,
-          string | null,
-        ];
+        const [pk, sessionId] = JSON.parse(row.session_key) as [string, string, string | null];
         if (pk !== projectKey) continue;
         const prior = sessions.get(sessionId);
         if (prior === undefined || row.mtime > prior) {
@@ -121,24 +109,15 @@ export class SqliteSessionStore implements SessionStore {
       .sort((a, b) => b.mtime - a.mtime);
   }
 
-  async listSubkeys(key: {
-    projectKey: string;
-    sessionId: string;
-  }): Promise<string[]> {
+  async listSubkeys(key: { projectKey: string; sessionId: string }): Promise<string[]> {
     const rows = this.db
-      .prepare<[], { session_key: string }>(
-        "SELECT session_key FROM miracle_sessions",
-      )
+      .prepare<[], { session_key: string }>("SELECT session_key FROM miracle_sessions")
       .all();
 
     const subkeys: string[] = [];
     for (const row of rows) {
       try {
-        const [pk, sid, subpath] = JSON.parse(row.session_key) as [
-          string,
-          string,
-          string | null,
-        ];
+        const [pk, sid, subpath] = JSON.parse(row.session_key) as [string, string, string | null];
         if (pk === key.projectKey && sid === key.sessionId && subpath) {
           subkeys.push(subpath);
         }

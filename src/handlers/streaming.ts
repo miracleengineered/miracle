@@ -22,10 +22,7 @@ import {
 /**
  * Create inline keyboard for ask_user options.
  */
-export function createAskUserKeyboard(
-  requestId: string,
-  options: string[]
-): InlineKeyboard {
+export function createAskUserKeyboard(requestId: string, options: string[]): InlineKeyboard {
   const keyboard = new InlineKeyboard();
   for (let idx = 0; idx < options.length; idx++) {
     const option = options[idx]!;
@@ -43,15 +40,10 @@ export function createAskUserKeyboard(
 /**
  * Check for pending ask-user requests and send inline keyboards.
  */
-export async function checkPendingAskUserRequests(
-  ctx: Context,
-  chatId: number
-): Promise<boolean> {
+export async function checkPendingAskUserRequests(ctx: Context, chatId: number): Promise<boolean> {
   const tmp = tmpdir();
   let buttonsSent = false;
-  const files = readdirSync(tmp).filter(
-    (f) => f.startsWith("ask-user-") && f.endsWith(".json")
-  );
+  const files = readdirSync(tmp).filter((f) => f.startsWith("ask-user-") && f.endsWith(".json"));
 
   for (const filename of files) {
     const filepath = resolve(tmp, filename);
@@ -99,12 +91,8 @@ export class StreamingState {
  * Format content for Telegram, ensuring it fits within the message limit.
  * Truncates raw content and re-converts if HTML output exceeds the limit.
  */
-function formatWithinLimit(
-  content: string,
-  safeLimit: number = TELEGRAM_SAFE_LIMIT
-): string {
-  let display =
-    content.length > safeLimit ? content.slice(0, safeLimit) + "..." : content;
+function formatWithinLimit(content: string, safeLimit: number = TELEGRAM_SAFE_LIMIT): string {
+  let display = content.length > safeLimit ? content.slice(0, safeLimit) + "..." : content;
   let formatted = convertMarkdownToHtml(display);
 
   // HTML tags can inflate content beyond the limit - shrink until it fits
@@ -120,10 +108,7 @@ function formatWithinLimit(
 /**
  * Split long formatted content into chunks and send as separate messages.
  */
-export async function sendChunkedMessages(
-  ctx: Context,
-  content: string
-): Promise<void> {
+export async function sendChunkedMessages(ctx: Context, content: string): Promise<void> {
   // Split on markdown content first, then format each chunk
   for (let i = 0; i < content.length; i += TELEGRAM_SAFE_LIMIT) {
     const chunk = content.slice(i, i + TELEGRAM_SAFE_LIMIT);
@@ -143,18 +128,14 @@ export async function sendChunkedMessages(
 /**
  * Create a status callback for streaming updates.
  */
-export function createStatusCallback(
-  ctx: Context,
-  state: StreamingState
-): StatusCallback {
+export function createStatusCallback(ctx: Context, state: StreamingState): StatusCallback {
   let consecutiveEditFailures = 0;
 
   return async (statusType: string, content: string, segmentId?: number) => {
     try {
       if (statusType === "thinking") {
         // Show thinking in the single status message (compact)
-        const preview =
-          content.length > 300 ? content.slice(0, 300) + "..." : content;
+        const preview = content.length > 300 ? content.slice(0, 300) + "..." : content;
         const escaped = escapeHtml(preview);
         const text = `🧠 <i>${escaped}</i>`;
 
@@ -164,13 +145,13 @@ export function createStatusCallback(
               state.statusMsg.chat.id,
               state.statusMsg.message_id,
               text,
-              { parse_mode: "HTML" }
+              { parse_mode: "HTML" },
             );
             consecutiveEditFailures = 0;
           } catch {
             consecutiveEditFailures++;
             if (consecutiveEditFailures >= 3) {
-              console.error('[ERROR] Typing indicator: 3 consecutive edit failures, stopping loop');
+              console.error("[ERROR] Typing indicator: 3 consecutive edit failures, stopping loop");
               return;
             }
             // Edit failed — send new
@@ -195,7 +176,7 @@ export function createStatusCallback(
               state.statusMsg.chat.id,
               state.statusMsg.message_id,
               content,
-              { parse_mode: "HTML" }
+              { parse_mode: "HTML" },
             );
           } catch {
             // Edit failed — send new
@@ -245,30 +226,19 @@ export function createStatusCallback(
             return;
           }
           try {
-            await ctx.api.editMessageText(
-              msg.chat.id,
-              msg.message_id,
-              formatted,
-              {
-                parse_mode: "HTML",
-              }
-            );
+            await ctx.api.editMessageText(msg.chat.id, msg.message_id, formatted, {
+              parse_mode: "HTML",
+            });
             state.lastContent.set(segmentId, formatted);
           } catch (error) {
             const errorStr = String(error);
             if (errorStr.includes("MESSAGE_TOO_LONG")) {
               // Skip this intermediate update - segment_end will chunk properly
-              console.debug(
-                "Streaming edit too long, deferring to segment_end"
-              );
+              console.debug("Streaming edit too long, deferring to segment_end");
             } else {
               console.debug("HTML edit failed, trying plain text:", error);
               try {
-                await ctx.api.editMessageText(
-                  msg.chat.id,
-                  msg.message_id,
-                  formatted
-                );
+                await ctx.api.editMessageText(msg.chat.id, msg.message_id, formatted);
                 state.lastContent.set(segmentId, formatted);
               } catch (editError) {
                 console.debug("Edit message failed:", editError);
@@ -306,14 +276,9 @@ export function createStatusCallback(
 
             if (formatted.length <= TELEGRAM_MESSAGE_LIMIT) {
               try {
-                await ctx.api.editMessageText(
-                  msg.chat.id,
-                  msg.message_id,
-                  formatted,
-                  {
-                    parse_mode: "HTML",
-                  }
-                );
+                await ctx.api.editMessageText(msg.chat.id, msg.message_id, formatted, {
+                  parse_mode: "HTML",
+                });
               } catch (error) {
                 const errorStr = String(error);
                 if (errorStr.includes("MESSAGE_TOO_LONG")) {

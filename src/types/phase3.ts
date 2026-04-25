@@ -10,12 +10,7 @@
 // orchestrator code (which pattern-matches on "completed"/"failed")
 // keeps compiling.
 
-export type JobStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
+export type JobStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 
 /**
  * Row shape for the `jobs` table. Column names match the SQLite schema
@@ -61,9 +56,7 @@ export interface HookEventRow {
 
 export type NotebookBackend = "memory" | "sqlite";
 
-export type NotebookConfig =
-  | { backend: "memory" }
-  | { backend: "sqlite"; dbPath: string };
+export type NotebookConfig = { backend: "memory" } | { backend: "sqlite"; dbPath: string };
 
 // ── HTTP listener (C5) ──────────────────────────────────────────────────
 //

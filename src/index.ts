@@ -19,7 +19,13 @@ process.on("uncaughtException", (err) => {
 import { Bot, InputFile } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
-import { TELEGRAM_TOKEN, ALLOWED_USERS, RESTART_FILE, CLAUDE_CLI_PATH, WORKING_DIR } from "./config";
+import {
+  TELEGRAM_TOKEN,
+  ALLOWED_USERS,
+  RESTART_FILE,
+  CLAUDE_CLI_PATH,
+  WORKING_DIR,
+} from "./config";
 import { loadEnv } from "./config/env";
 import type { Tier3Runtime } from "./tier3/runtime";
 import type { StartWorker } from "./orchestrator/types";
@@ -77,7 +83,7 @@ bot.use(
     }
     // Other messages are sequentialized per chat
     return ctx.chat?.id.toString();
-  })
+  }),
 );
 
 // ============== Command Handlers ==============
@@ -103,12 +109,8 @@ bot.command("voice", handleVoiceToggle);
 // required at callback time.
 const miracleSliceEnabled = process.env.MIRACLE_SLICE_ENABLED === "true";
 if (miracleSliceEnabled) {
-  const {
-    handlePlanCommand,
-    handleMiracleHalt,
-    handleMiracleStatus,
-    handleMiracleCancel,
-  } = await import("./handlers/miracle-commands");
+  const { handlePlanCommand, handleMiracleHalt, handleMiracleStatus, handleMiracleCancel } =
+    await import("./handlers/miracle-commands");
   bot.command("plan", handlePlanCommand);
   bot.command("miracle_halt", handleMiracleHalt);
   bot.command("miracle_status", handleMiracleStatus);
@@ -223,9 +225,7 @@ bot.on("message:video_note", handleVideo);
 // ============== Callback Queries ==============
 
 if (miracleSliceEnabled) {
-  const { handleMiracleCallback, isMiracleCallback } = await import(
-    "./handlers/miracle-callback"
-  );
+  const { handleMiracleCallback, isMiracleCallback } = await import("./handlers/miracle-callback");
   bot.on("callback_query:data", async (ctx, next) => {
     const data = ctx.callbackQuery?.data;
     if (data && isMiracleCallback(data)) {
@@ -289,11 +289,7 @@ if (existsSync(RESTART_FILE)) {
 
     // Only update if restart was recent (within 30 seconds)
     if (age < 30000 && data.chat_id && data.message_id) {
-      await bot.api.editMessageText(
-        data.chat_id,
-        data.message_id,
-        "✅ Bot restarted"
-      );
+      await bot.api.editMessageText(data.chat_id, data.message_id, "✅ Bot restarted");
     }
     unlinkSync(RESTART_FILE);
   } catch (e) {
@@ -325,9 +321,7 @@ const stopRunner = async () => {
       const { markRunningPlansAsShutdown } = await import("./miracle/db");
       const changed = markRunningPlansAsShutdown();
       if (changed > 0) {
-        console.log(
-          `shutdown: marked ${changed} running miracle plan(s) as failed_shutdown`,
-        );
+        console.log(`shutdown: marked ${changed} running miracle plan(s) as failed_shutdown`);
       }
     } catch (err) {
       console.error("shutdown: markRunningPlansAsShutdown failed:", err);

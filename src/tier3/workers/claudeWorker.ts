@@ -32,11 +32,7 @@
 // dedup (only the final `result` event matters), prompt-too-long auto-clear
 // (subtasks are single-shot).
 
-import {
-  spawn as defaultSpawn,
-  type ChildProcess,
-  type SpawnOptions,
-} from "node:child_process";
+import { spawn as defaultSpawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import { createInterface } from "node:readline";
 
 import type { Correlator } from "../../correlation/correlator.js";
@@ -45,11 +41,7 @@ import type { OnEvent, StartWorker, WorkerHandle } from "../../orchestrator/type
 
 type WorkerLogger = Pick<Console, "warn" | "error">;
 
-type SpawnLike = (
-  command: string,
-  args: readonly string[],
-  options: SpawnOptions,
-) => ChildProcess;
+type SpawnLike = (command: string, args: readonly string[], options: SpawnOptions) => ChildProcess;
 
 export interface ClaudeWorkerConfig {
   client: NotebookClient;
@@ -90,9 +82,7 @@ export function createClaudeWorker(config: ClaudeWorkerConfig): StartWorker {
     const ask = typeof payload.ask === "string" ? payload.ask : "";
     const model = typeof payload.model === "string" ? payload.model : null;
     const conversationSessionId =
-      typeof payload.conversationSessionId === "string"
-        ? payload.conversationSessionId
-        : null;
+      typeof payload.conversationSessionId === "string" ? payload.conversationSessionId : null;
 
     if (!ask.trim()) {
       config.client.updateStatus(job.id, "failed", {
@@ -135,10 +125,7 @@ export function createClaudeWorker(config: ClaudeWorkerConfig): StartWorker {
         stdin.write(ask);
         stdin.end();
       } catch (writeError) {
-        logger.warn(
-          `claudeWorker: failed to write prompt for job ${job.id}`,
-          writeError,
-        );
+        logger.warn(`claudeWorker: failed to write prompt for job ${job.id}`, writeError);
       }
     }
 
@@ -170,9 +157,7 @@ interface DriveSubprocessConfig {
   onEvent?: OnEvent;
 }
 
-async function driveSubprocess(
-  config: DriveSubprocessConfig,
-): Promise<void> {
+async function driveSubprocess(config: DriveSubprocessConfig): Promise<void> {
   const { job, child, client, correlator, logger, onEvent } = config;
 
   const stderrChunks: string[] = [];
@@ -218,16 +203,12 @@ async function driveSubprocess(
           try {
             await onEvent(event);
           } catch (onEventError) {
-            logger.warn(
-              `claudeWorker: onEvent callback threw for job ${job.id}`,
-              onEventError,
-            );
+            logger.warn(`claudeWorker: onEvent callback threw for job ${job.id}`, onEventError);
           }
         }
 
         if (e.type === "result") {
-          const isError =
-            e.is_error === true || e.subtype === "error";
+          const isError = e.is_error === true || e.subtype === "error";
           if (isError) {
             errorText =
               typeof e.error === "string"
@@ -242,10 +223,7 @@ async function driveSubprocess(
       }
     }
   } catch (streamError) {
-    logger.warn(
-      `claudeWorker: stdout stream errored for job ${job.id}`,
-      streamError,
-    );
+    logger.warn(`claudeWorker: stdout stream errored for job ${job.id}`, streamError);
     if (!errorText) {
       errorText = `stdout read failed: ${stringifyError(streamError)}`;
     }

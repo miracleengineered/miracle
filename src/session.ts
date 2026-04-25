@@ -32,12 +32,7 @@ import {
 } from "./signatures";
 import { formatToolStatus } from "./formatting";
 import { checkPendingAskUserRequests } from "./handlers/streaming";
-import type {
-  SavedSession,
-  SessionHistory,
-  StatusCallback,
-  TokenUsage,
-} from "./types";
+import type { SavedSession, SessionHistory, StatusCallback, TokenUsage } from "./types";
 
 /**
  * Kill a process tree. On Windows, `taskkill /T` kills child processes too
@@ -162,7 +157,7 @@ class ClaudeSession {
     try {
       writeFileSync(
         STATE_FILE,
-        JSON.stringify({ working_dir: this._workingDir, saved_at: new Date().toISOString() })
+        JSON.stringify({ working_dir: this._workingDir, saved_at: new Date().toISOString() }),
       );
     } catch (err) {
       console.warn("Failed to save state:", err);
@@ -295,7 +290,7 @@ class ClaudeSession {
     userId: number,
     statusCallback: StatusCallback,
     chatId?: number,
-    ctx?: Context
+    ctx?: Context,
   ): Promise<string> {
     // Set chat context for ask_user MCP tool
     if (chatId) {
@@ -312,10 +307,7 @@ class ClaudeSession {
 
     // sendSignature(phrase, dedupKey): module-level dedup; sends to Telegram via ctx.api.
     // Closure captures chatId and ctx for the duration of this turn. No hardcoded chat IDs.
-    const sendSignature = async (
-      phrase: string,
-      dedupKey: string,
-    ): Promise<void> => {
+    const sendSignature = async (phrase: string, dedupKey: string): Promise<void> => {
       if (hasFired(dedupKey)) return;
       markFired(dedupKey);
       if (!chatId || !ctx?.api) return;
@@ -330,18 +322,15 @@ class ClaudeSession {
     let messageToSend = message;
     if (isNewSession) {
       const now = new Date();
-      const datePrefix = `[Current date/time: ${now.toLocaleDateString(
-        "en-US",
-        {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZoneName: "short",
-        }
-      )}]\n\n`;
+      const datePrefix = `[Current date/time: ${now.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      })}]\n\n`;
       messageToSend = datePrefix + message;
     }
 
@@ -380,7 +369,7 @@ class ClaudeSession {
     // ask_user MCP: instruct Claude to use button prompts for multiple-choice questions
     args.push(
       "--append-system-prompt",
-      "TELEGRAM INTERACTION: The user is reading on a phone. When you want to ask a multiple-choice question with specific predefined options (e.g. project type, tech stack, yes/no decisions, selecting from a list), use the ask_user MCP tool instead of writing the question as plain text. The user can tap a button rather than type. After calling ask_user, stop — do not write anything else. For open-ended questions that need free-form input, just ask normally in text."
+      "TELEGRAM INTERACTION: The user is reading on a phone. When you want to ask a multiple-choice question with specific predefined options (e.g. project type, tech stack, yes/no decisions, selecting from a list), use the ask_user MCP tool instead of writing the question as plain text. The user can tap a button rather than type. After calling ask_user, stop — do not write anything else. For open-ended questions that need free-form input, just ask normally in text.",
     );
 
     if (isNewSession) {
@@ -391,9 +380,7 @@ class ClaudeSession {
 
     // Check if stop was requested during processing phase
     if (this.stopRequested) {
-      console.log(
-        "Query cancelled before starting (stop was requested during processing)"
-      );
+      console.log("Query cancelled before starting (stop was requested during processing)");
       this.stopRequested = false;
       throw new Error("Query cancelled");
     }
@@ -421,9 +408,9 @@ class ClaudeSession {
       if (inv.shouldWarn && ctx) {
         const msg = `⚠️ Miracle daily invocation count crossed ${inv.threshold} (now ${inv.count}). Subscription throttle risk; check for stuck handlers.`;
         if (chatId) {
-          ctx.api.sendMessage(chatId, msg).catch((e) =>
-            console.warn("[daily-warn] sendMessage failed:", e),
-          );
+          ctx.api
+            .sendMessage(chatId, msg)
+            .catch((e) => console.warn("[daily-warn] sendMessage failed:", e));
         }
         console.warn(`[daily-warn] ${msg}`);
       }
@@ -496,11 +483,7 @@ class ClaudeSession {
         // Run first so tool_use events are tracked before the existing logic
         // consumes them, and the result event fires Delivered/Blocked before
         // any throw below.
-        for (const sig of candidatesForEvent(
-          event,
-          this.sessionId,
-          sigTurnId,
-        )) {
+        for (const sig of candidatesForEvent(event, this.sessionId, sigTurnId)) {
           await sendSignature(sig.phrase, sig.dedupKey);
         }
 
@@ -546,11 +529,7 @@ class ClaudeSession {
                   now - lastTextUpdate > STREAMING_THROTTLE_MS &&
                   currentSegmentText.length > 20
                 ) {
-                  await statusCallback(
-                    "text",
-                    currentSegmentText,
-                    currentSegmentId
-                  );
+                  await statusCallback("text", currentSegmentText, currentSegmentId);
                   lastTextUpdate = now;
                 }
               }
@@ -564,20 +543,13 @@ class ClaudeSession {
 
                 // End current text segment
                 if (currentSegmentText) {
-                  await statusCallback(
-                    "segment_end",
-                    currentSegmentText,
-                    currentSegmentId
-                  );
+                  await statusCallback("segment_end", currentSegmentText, currentSegmentId);
                   currentSegmentId++;
                   currentSegmentText = "";
                 }
 
                 // Format and show tool status
-                const toolInput = (block.input || {}) as Record<
-                  string,
-                  unknown
-                >;
+                const toolInput = (block.input || {}) as Record<string, unknown>;
                 const toolDisplay = formatToolStatus(block.name, toolInput);
                 this.currentTool = toolDisplay;
                 this.lastTool = toolDisplay;
@@ -592,10 +564,7 @@ class ClaudeSession {
                 if (block.name.startsWith("mcp__ask-user") && ctx && chatId) {
                   await new Promise((r) => setTimeout(r, 200));
                   for (let attempt = 0; attempt < 3; attempt++) {
-                    const buttonsSent = await checkPendingAskUserRequests(
-                      ctx,
-                      chatId
-                    );
+                    const buttonsSent = await checkPendingAskUserRequests(ctx, chatId);
                     if (buttonsSent) {
                       askUserTriggered = true;
                       break;
@@ -625,16 +594,14 @@ class ClaudeSession {
             this.lastUsage = {
               input_tokens: event.usage.input_tokens || 0,
               output_tokens: event.usage.output_tokens || 0,
-              cache_read_input_tokens:
-                event.usage.cache_read_input_tokens || 0,
-              cache_creation_input_tokens:
-                event.usage.cache_creation_input_tokens || 0,
+              cache_read_input_tokens: event.usage.cache_read_input_tokens || 0,
+              cache_creation_input_tokens: event.usage.cache_creation_input_tokens || 0,
             };
             const u = this.lastUsage;
             console.log(
               `Usage: in=${u.input_tokens} out=${u.output_tokens} cache_read=${
                 u.cache_read_input_tokens || 0
-              } cache_create=${u.cache_creation_input_tokens || 0}`
+              } cache_create=${u.cache_creation_input_tokens || 0}`,
             );
           }
 
@@ -649,12 +616,8 @@ class ClaudeSession {
                 (m.cacheReadInputTokens || 0) +
                 (m.cacheCreationInputTokens || 0);
               const contextWindow = m.contextWindow || 200000;
-              this.contextPercent = Math.round(
-                (totalTokens / contextWindow) * 100
-              );
-              console.log(
-                `Context: ${this.contextPercent}% (${totalTokens}/${contextWindow})`
-              );
+              this.contextPercent = Math.round((totalTokens / contextWindow) * 100);
+              console.log(`Context: ${this.contextPercent}% (${totalTokens}/${contextWindow})`);
             }
           }
 
@@ -685,16 +648,9 @@ class ClaudeSession {
 
       // Check exit code — non-zero means error (unless user-initiated stop)
       const exitCode = this.childProcess?.exitCode;
-      if (
-        exitCode &&
-        exitCode !== 0 &&
-        !this.stopRequested &&
-        !askUserTriggered
-      ) {
+      if (exitCode && exitCode !== 0 && !this.stopRequested && !askUserTriggered) {
         const stderr = stderrChunks.join("");
-        throw new Error(
-          `exited with code ${exitCode}: ${stderr.slice(0, 200)}`
-        );
+        throw new Error(`exited with code ${exitCode}: ${stderr.slice(0, 200)}`);
       }
     } catch (error) {
       // Signature hook (step 9): uncaught stream/exit/parse error = outer blocked.
@@ -704,8 +660,7 @@ class ClaudeSession {
       }
 
       const errorStr = String(error).toLowerCase();
-      const isCleanupError =
-        errorStr.includes("cancel") || errorStr.includes("abort");
+      const isCleanupError = errorStr.includes("cancel") || errorStr.includes("abort");
 
       if (isCleanupError && (this.stopRequested || askUserTriggered)) {
         console.warn(`Suppressed post-stop error: ${error}`);
@@ -742,11 +697,7 @@ class ClaudeSession {
 
     // Emit final segment
     if (currentSegmentText) {
-      await statusCallback(
-        "segment_end",
-        currentSegmentText,
-        currentSegmentId
-      );
+      await statusCallback("segment_end", currentSegmentText, currentSegmentId);
     }
 
     await statusCallback("done", "");
@@ -786,9 +737,7 @@ class ClaudeSession {
       };
 
       // Remove any existing entry with same session_id (update in place)
-      const existingIndex = history.sessions.findIndex(
-        (s) => s.session_id === this.sessionId
-      );
+      const existingIndex = history.sessions.findIndex((s) => s.session_id === this.sessionId);
       if (existingIndex !== -1) {
         history.sessions[existingIndex] = newSession;
       } else {
@@ -833,9 +782,7 @@ class ClaudeSession {
   getSessionList(): SavedSession[] {
     const history = this.loadSessionHistory();
     // Filter to only sessions for current working directory
-    return history.sessions.filter(
-      (s) => !s.working_dir || s.working_dir === this._workingDir
-    );
+    return history.sessions.filter((s) => !s.working_dir || s.working_dir === this._workingDir);
   }
 
   /**
@@ -843,22 +790,14 @@ class ClaudeSession {
    */
   resumeSession(sessionId: string): [success: boolean, message: string] {
     const history = this.loadSessionHistory();
-    const sessionData = history.sessions.find(
-      (s) => s.session_id === sessionId
-    );
+    const sessionData = history.sessions.find((s) => s.session_id === sessionId);
 
     if (!sessionData) {
       return [false, "Session not found"];
     }
 
-    if (
-      sessionData.working_dir &&
-      sessionData.working_dir !== this._workingDir
-    ) {
-      return [
-        false,
-        `Session is for a different directory: ${sessionData.working_dir}`,
-      ];
+    if (sessionData.working_dir && sessionData.working_dir !== this._workingDir) {
+      return [false, `Session is for a different directory: ${sessionData.working_dir}`];
     }
 
     this.sessionId = sessionData.session_id;
@@ -866,7 +805,7 @@ class ClaudeSession {
     this.lastActivity = new Date();
 
     console.log(
-      `Resumed session ${sessionData.session_id.slice(0, 8)}... - "${sessionData.title}"`
+      `Resumed session ${sessionData.session_id.slice(0, 8)}... - "${sessionData.title}"`,
     );
 
     return [true, `Resumed session: "${sessionData.title}"`];

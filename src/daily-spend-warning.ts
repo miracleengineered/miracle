@@ -17,13 +17,9 @@ import { dirname } from "path";
 import { homedir } from "os";
 
 const STATE_FILE =
-  process.env.MIRACLE_DAILY_INVOCATIONS_FILE ??
-  `${homedir()}/.miracle/daily-invocations.json`;
+  process.env.MIRACLE_DAILY_INVOCATIONS_FILE ?? `${homedir()}/.miracle/daily-invocations.json`;
 
-const THRESHOLD = parseInt(
-  process.env.MIRACLE_DAILY_INVOCATION_WARN_THRESHOLD ?? "200",
-  10,
-);
+const THRESHOLD = parseInt(process.env.MIRACLE_DAILY_INVOCATION_WARN_THRESHOLD ?? "200", 10);
 
 interface DailyState {
   date: string;

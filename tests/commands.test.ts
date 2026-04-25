@@ -28,8 +28,7 @@ vi.mock("../src/security", () => ({
 
 // Mock fs for parseRoadmap
 vi.mock("fs", async () => {
-  const actual =
-    await vi.importActual<typeof import("fs")>("fs");
+  const actual = await vi.importActual<typeof import("fs")>("fs");
   return {
     ...actual,
     existsSync: vi.fn(),
@@ -79,9 +78,7 @@ describe("parseRoadmap", () => {
 
   it("parses completed phases", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      "- [x] **Phase 1: Foundation** - Set up project structure\n"
-    );
+    mockReadFileSync.mockReturnValue("- [x] **Phase 1: Foundation** - Set up project structure\n");
 
     const phases = parseRoadmap("/fake/project");
     expect(phases).toHaveLength(1);
@@ -92,9 +89,7 @@ describe("parseRoadmap", () => {
 
   it("parses pending phases", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      "- [ ] **Phase 2: API Layer** - Build REST endpoints\n"
-    );
+    mockReadFileSync.mockReturnValue("- [ ] **Phase 2: API Layer** - Build REST endpoints\n");
 
     const phases = parseRoadmap("/fake/project");
     expect(phases).toHaveLength(1);
@@ -103,9 +98,7 @@ describe("parseRoadmap", () => {
 
   it("parses skipped phases", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      "- [~] **Phase 3: Caching** - Add Redis cache layer\n"
-    );
+    mockReadFileSync.mockReturnValue("- [~] **Phase 3: Caching** - Add Redis cache layer\n");
 
     const phases = parseRoadmap("/fake/project");
     expect(phases).toHaveLength(1);
@@ -114,9 +107,7 @@ describe("parseRoadmap", () => {
 
   it("extracts number, name, and description", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      "- [x] **Phase 4: Dashboard** - Web UI for monitoring\n"
-    );
+    mockReadFileSync.mockReturnValue("- [x] **Phase 4: Dashboard** - Web UI for monitoring\n");
 
     const phases = parseRoadmap("/fake/project");
     expect(phases[0]).toEqual({
@@ -129,9 +120,7 @@ describe("parseRoadmap", () => {
 
   it("handles decimal phase numbers", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      "- [ ] **Phase 2.1: Hotfix** - Emergency patch\n"
-    );
+    mockReadFileSync.mockReturnValue("- [ ] **Phase 2.1: Hotfix** - Emergency patch\n");
 
     const phases = parseRoadmap("/fake/project");
     expect(phases[0]!.number).toBe("2.1");

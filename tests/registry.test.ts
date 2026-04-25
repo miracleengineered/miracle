@@ -2,8 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 
 // Mock fs before importing registry
 vi.mock("fs", async () => {
-  const actual =
-    await vi.importActual<typeof import("fs")>("fs");
+  const actual = await vi.importActual<typeof import("fs")>("fs");
   return {
     ...actual,
     readFileSync: vi.fn(),

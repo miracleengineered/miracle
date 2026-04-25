@@ -34,7 +34,7 @@ export type ProcessGroupCallback = (
   caption: string | undefined,
   userId: number,
   username: string,
-  chatId: number
+  chatId: number,
 ) => Promise<void>;
 
 /**
@@ -50,7 +50,7 @@ export function createMediaGroupBuffer(config: MediaGroupConfig) {
    */
   async function processGroup(
     groupId: string,
-    processCallback: ProcessGroupCallback
+    processCallback: ProcessGroupCallback,
   ): Promise<void> {
     const group = pendingGroups.get(groupId);
     if (!group) return;
@@ -63,9 +63,7 @@ export function createMediaGroupBuffer(config: MediaGroupConfig) {
 
     if (!userId || !chatId) return;
 
-    console.log(
-      `Processing ${group.items.length} ${config.itemLabelPlural} from @${username}`
-    );
+    console.log(`Processing ${group.items.length} ${config.itemLabelPlural} from @${username}`);
 
     // Update status message
     if (group.statusMsg) {
@@ -73,29 +71,19 @@ export function createMediaGroupBuffer(config: MediaGroupConfig) {
         await group.ctx.api.editMessageText(
           group.statusMsg.chat.id,
           group.statusMsg.message_id,
-          `${config.emoji} Processing ${group.items.length} ${config.itemLabelPlural}...`
+          `${config.emoji} Processing ${group.items.length} ${config.itemLabelPlural}...`,
         );
       } catch (error) {
         console.debug("Failed to update status message:", error);
       }
     }
 
-    await processCallback(
-      group.ctx,
-      group.items,
-      group.caption,
-      userId,
-      username,
-      chatId
-    );
+    await processCallback(group.ctx, group.items, group.caption, userId, username, chatId);
 
     // Delete status message
     if (group.statusMsg) {
       try {
-        await group.ctx.api.deleteMessage(
-          group.statusMsg.chat.id,
-          group.statusMsg.message_id
-        );
+        await group.ctx.api.deleteMessage(group.statusMsg.chat.id, group.statusMsg.message_id);
       } catch (error) {
         console.debug("Failed to delete status message:", error);
       }
@@ -113,34 +101,27 @@ export function createMediaGroupBuffer(config: MediaGroupConfig) {
     ctx: Context,
     userId: number,
     username: string,
-    processCallback: ProcessGroupCallback
+    processCallback: ProcessGroupCallback,
   ): Promise<boolean> {
     if (!pendingGroups.has(mediaGroupId)) {
       // Rate limit on first item only
       const [allowed, retryAfter] = rateLimiter.check(userId);
       if (!allowed) {
         await auditLogRateLimit(userId, username, retryAfter!);
-        await ctx.reply(
-          `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-        );
+        await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
         return false;
       }
 
       // Create new group
       console.log(`Receiving ${config.itemLabel} album from @${username}`);
-      const statusMsg = await ctx.reply(
-        `${config.emoji} Receiving ${config.itemLabelPlural}...`
-      );
+      const statusMsg = await ctx.reply(`${config.emoji} Receiving ${config.itemLabelPlural}...`);
 
       pendingGroups.set(mediaGroupId, {
         items: [itemPath],
         ctx,
         caption: ctx.message?.caption,
         statusMsg,
-        timeout: setTimeout(
-          () => processGroup(mediaGroupId, processCallback),
-          MEDIA_GROUP_TIMEOUT
-        ),
+        timeout: setTimeout(() => processGroup(mediaGroupId, processCallback), MEDIA_GROUP_TIMEOUT),
       });
     } else {
       // Add to existing group
@@ -156,7 +137,7 @@ export function createMediaGroupBuffer(config: MediaGroupConfig) {
       clearTimeout(group.timeout);
       group.timeout = setTimeout(
         () => processGroup(mediaGroupId, processCallback),
-        MEDIA_GROUP_TIMEOUT
+        MEDIA_GROUP_TIMEOUT,
       );
     }
 
@@ -178,7 +159,7 @@ export function createMediaGroupBuffer(config: MediaGroupConfig) {
 export async function handleProcessingError(
   ctx: Context,
   error: unknown,
-  toolMessages: Message[]
+  toolMessages: Message[],
 ): Promise<void> {
   console.error("Error processing media:", error);
 

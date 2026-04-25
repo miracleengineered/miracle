@@ -5,10 +5,7 @@ vi.mock("node:child_process", () => ({
 }));
 
 import { execFileSync } from "node:child_process";
-import {
-  loadSecretsFromKeychain,
-  environmentForClaudeChild,
-} from "../src/secrets";
+import { loadSecretsFromKeychain, environmentForClaudeChild } from "../src/secrets";
 
 const mockExec = vi.mocked(execFileSync);
 
@@ -65,14 +62,10 @@ describe("loadSecretsFromKeychain", () => {
       .mockReturnValueOnce(Buffer.from("\n")) // slice chat id absent
       .mockReturnValueOnce(Buffer.from("tg-bot-token\n"))
       .mockImplementationOnce(() => {
-        throw new Error(
-          "The specified item could not be found in the keychain.",
-        );
+        throw new Error("The specified item could not be found in the keychain.");
       });
 
-    expect(() => loadSecretsFromKeychain(emptyEnv())).toThrow(
-      /miracle-TELEGRAM_ALLOWED_USERS/,
-    );
+    expect(() => loadSecretsFromKeychain(emptyEnv())).toThrow(/miracle-TELEGRAM_ALLOWED_USERS/);
   });
 
   it("throws when a required Keychain entry returns an empty value", () => {
@@ -123,23 +116,19 @@ describe("loadSecretsFromKeychain", () => {
       throw new Error("The specified item could not be found in the keychain.");
     });
 
-    expect(() =>
-      loadSecretsFromKeychain({ MIRACLE_SLICE_ENABLED: "true" }),
-    ).toThrow(/miracle-slice-ANTHROPIC_API_KEY/);
+    expect(() => loadSecretsFromKeychain({ MIRACLE_SLICE_ENABLED: "true" })).toThrow(
+      /miracle-slice-ANTHROPIC_API_KEY/,
+    );
   });
 
   it("fails loudly with service name when MIRACLE_SLICE_ENABLED=true and the slice chat id is missing", () => {
-    mockExec
-      .mockReturnValueOnce(Buffer.from("sk-ant-slice\n"))
-      .mockImplementationOnce(() => {
-        throw new Error(
-          "The specified item could not be found in the keychain.",
-        );
-      });
+    mockExec.mockReturnValueOnce(Buffer.from("sk-ant-slice\n")).mockImplementationOnce(() => {
+      throw new Error("The specified item could not be found in the keychain.");
+    });
 
-    expect(() =>
-      loadSecretsFromKeychain({ MIRACLE_SLICE_ENABLED: "true" }),
-    ).toThrow(/miracle-slice-TELEGRAM_SUPERGROUP_ID/);
+    expect(() => loadSecretsFromKeychain({ MIRACLE_SLICE_ENABLED: "true" })).toThrow(
+      /miracle-slice-TELEGRAM_SUPERGROUP_ID/,
+    );
   });
 });
 

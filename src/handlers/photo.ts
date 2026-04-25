@@ -38,7 +38,7 @@ async function downloadPhoto(ctx: Context): Promise<string> {
 
   // Download
   const response = await fetch(
-    `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+    `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`,
   );
   const buffer = await response.arrayBuffer();
   writeFileSync(photoPath, Buffer.from(buffer));
@@ -55,7 +55,7 @@ async function processPhotos(
   caption: string | undefined,
   userId: number,
   username: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   // Mark processing started
   const stopProcessing = session.startProcessing();
@@ -76,8 +76,7 @@ async function processPhotos(
   // Set conversation title (if new session)
   if (!session.isActive) {
     const rawTitle = caption || "[Foto]";
-    const title =
-      rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
+    const title = rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
     session.conversationTitle = title;
   }
 
@@ -98,20 +97,24 @@ async function processPhotos(
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     // Delete processing message after response
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
 
     await auditLog(userId, username, "PHOTO", prompt, response);
   } catch (error) {
     // Delete processing message before error reply
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
     await handleProcessingError(ctx, error, state.toolMessages);
   } finally {
     stopProcessing();
@@ -146,9 +149,7 @@ export async function handlePhoto(ctx: Context): Promise<void> {
     const [allowed, retryAfter] = rateLimiter.check(userId);
     if (!allowed) {
       await auditLogRateLimit(userId, username, retryAfter!);
-      await ctx.reply(
-        `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-      );
+      await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
       return;
     }
 
@@ -167,7 +168,7 @@ export async function handlePhoto(ctx: Context): Promise<void> {
         await ctx.api.editMessageText(
           statusMsg.chat.id,
           statusMsg.message_id,
-          "❌ Failed to download photo."
+          "❌ Failed to download photo.",
         );
       } catch (editError) {
         console.debug("Failed to edit status message:", editError);
@@ -181,14 +182,7 @@ export async function handlePhoto(ctx: Context): Promise<void> {
 
   // 4. Single photo - process immediately
   if (!mediaGroupId && statusMsg) {
-    await processPhotos(
-      ctx,
-      [photoPath],
-      ctx.message?.caption,
-      userId,
-      username,
-      chatId
-    );
+    await processPhotos(ctx, [photoPath], ctx.message?.caption, userId, username, chatId);
 
     // Clean up status message
     try {
@@ -202,12 +196,5 @@ export async function handlePhoto(ctx: Context): Promise<void> {
   // 5. Media group - buffer with timeout
   if (!mediaGroupId) return; // TypeScript guard
 
-  await photoBuffer.addToGroup(
-    mediaGroupId,
-    photoPath,
-    ctx,
-    userId,
-    username,
-    processPhotos
-  );
+  await photoBuffer.addToGroup(mediaGroupId, photoPath, ctx, userId, username, processPhotos);
 }

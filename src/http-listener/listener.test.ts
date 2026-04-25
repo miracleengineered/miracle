@@ -3,16 +3,9 @@ import { createServer } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createCorrelator } from "../correlation/correlator.js";
-import {
-  InMemoryNotebookClient,
-  type NotebookClient,
-} from "../notebook/client.js";
+import { InMemoryNotebookClient, type NotebookClient } from "../notebook/client.js";
 import { createHttpListener } from "./listener.js";
-import type {
-  HookEventPayload,
-  HttpListener,
-  HttpListenerConfig,
-} from "./types.js";
+import type { HookEventPayload, HttpListener, HttpListenerConfig } from "./types.js";
 
 const activeListeners = new Set<HttpListener>();
 const TEST_LOGGER = {
@@ -130,8 +123,7 @@ describe("HttpListener", () => {
 
   it("returns 500 with a JSON error body when notebook writes fail", async () => {
     const port = await getFreePort();
-    const notebook: NotebookClient &
-      Required<Pick<NotebookClient, "appendHookEvent">> = {
+    const notebook: NotebookClient & Required<Pick<NotebookClient, "appendHookEvent">> = {
       createJob() {
         throw new Error("unused");
       },

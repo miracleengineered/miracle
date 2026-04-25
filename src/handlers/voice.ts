@@ -9,12 +9,7 @@ import { ALLOWED_USERS, TEMP_DIR, TRANSCRIPTION_AVAILABLE } from "../config";
 import { isAuthorized, rateLimiter } from "../security";
 import type { Tier3Runtime } from "../tier3/runtime";
 import type { StartWorker } from "../orchestrator/types";
-import {
-  auditLog,
-  auditLogRateLimit,
-  transcribeVoice,
-  startTypingIndicator,
-} from "../utils";
+import { auditLog, auditLogRateLimit, transcribeVoice, startTypingIndicator } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
 import { sendTier3Reply, runTier3JobWithRetry } from "./tier3-reply";
 
@@ -39,9 +34,7 @@ export async function handleVoice(ctx: Context): Promise<void> {
 
   // 2. Check if transcription is available
   if (!TRANSCRIPTION_AVAILABLE) {
-    await ctx.reply(
-      "Voice transcription is not configured. Set OPENAI_API_KEY in .env"
-    );
+    await ctx.reply("Voice transcription is not configured. Set OPENAI_API_KEY in .env");
     return;
   }
 
@@ -49,9 +42,7 @@ export async function handleVoice(ctx: Context): Promise<void> {
   const [allowed, retryAfter] = rateLimiter.check(userId);
   if (!allowed) {
     await auditLogRateLimit(userId, username, retryAfter!);
-    await ctx.reply(
-      `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-    );
+    await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
     return;
   }
 
@@ -71,7 +62,7 @@ export async function handleVoice(ctx: Context): Promise<void> {
 
     // Download the file
     const downloadRes = await fetch(
-      `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+      `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`,
     );
     const buffer = await downloadRes.arrayBuffer();
     writeFileSync(voicePath, Buffer.from(buffer));
@@ -81,11 +72,7 @@ export async function handleVoice(ctx: Context): Promise<void> {
 
     const transcript = await transcribeVoice(voicePath);
     if (!transcript) {
-      await ctx.api.editMessageText(
-        chatId,
-        statusMsg.message_id,
-        "❌ Transcription failed."
-      );
+      await ctx.api.editMessageText(chatId, statusMsg.message_id, "❌ Transcription failed.");
       stopProcessing();
       return;
     }
@@ -93,19 +80,12 @@ export async function handleVoice(ctx: Context): Promise<void> {
     // 8. Show transcript (truncate display if needed - full transcript still sent to Claude)
     const maxDisplay = 4000; // Leave room for 🎤 "" wrapper within 4096 limit
     const displayTranscript =
-      transcript.length > maxDisplay
-        ? transcript.slice(0, maxDisplay) + "…"
-        : transcript;
-    await ctx.api.editMessageText(
-      chatId,
-      statusMsg.message_id,
-      `🎤 "${displayTranscript}"`
-    );
+      transcript.length > maxDisplay ? transcript.slice(0, maxDisplay) + "…" : transcript;
+    await ctx.api.editMessageText(chatId, statusMsg.message_id, `🎤 "${displayTranscript}"`);
 
     // 9. Set conversation title from transcript (if new session)
     if (!session.isActive) {
-      const title =
-        transcript.length > 50 ? transcript.slice(0, 47) + "..." : transcript;
+      const title = transcript.length > 50 ? transcript.slice(0, 47) + "..." : transcript;
       session.conversationTitle = title;
     }
 
@@ -123,13 +103,15 @@ export async function handleVoice(ctx: Context): Promise<void> {
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     // Delete processing message after response
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
 
     // 13. Audit log
     await auditLog(userId, username, "VOICE", transcript, claudeResponse);
@@ -191,9 +173,7 @@ export async function handleVoiceTier3(
 
   // 2. Check if transcription is available
   if (!TRANSCRIPTION_AVAILABLE) {
-    await ctx.reply(
-      "Voice transcription is not configured. Set OPENAI_API_KEY in .env"
-    );
+    await ctx.reply("Voice transcription is not configured. Set OPENAI_API_KEY in .env");
     return;
   }
 
@@ -201,9 +181,7 @@ export async function handleVoiceTier3(
   const [allowed, retryAfter] = rateLimiter.check(userId);
   if (!allowed) {
     await auditLogRateLimit(userId, username, retryAfter!);
-    await ctx.reply(
-      `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-    );
+    await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
     return;
   }
 
@@ -216,7 +194,7 @@ export async function handleVoiceTier3(
     voicePath = `${TEMP_DIR}/voice_${timestamp}.ogg`;
 
     const downloadRes = await fetch(
-      `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+      `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`,
     );
     const buffer = await downloadRes.arrayBuffer();
     writeFileSync(voicePath, Buffer.from(buffer));
@@ -226,25 +204,15 @@ export async function handleVoiceTier3(
 
     const transcript = await transcribeVoice(voicePath);
     if (!transcript) {
-      await ctx.api.editMessageText(
-        chatId,
-        statusMsg.message_id,
-        "❌ Transcription failed."
-      );
+      await ctx.api.editMessageText(chatId, statusMsg.message_id, "❌ Transcription failed.");
       return;
     }
 
     // 6. Show transcript (truncate display if needed - full transcript still sent to runJob)
     const maxDisplay = 4000; // Leave room for 🎤 "" wrapper within 4096 limit
     const displayTranscript =
-      transcript.length > maxDisplay
-        ? transcript.slice(0, maxDisplay) + "…"
-        : transcript;
-    await ctx.api.editMessageText(
-      chatId,
-      statusMsg.message_id,
-      `🎤 "${displayTranscript}"`
-    );
+      transcript.length > maxDisplay ? transcript.slice(0, maxDisplay) + "…" : transcript;
+    await ctx.api.editMessageText(chatId, statusMsg.message_id, `🎤 "${displayTranscript}"`);
 
     // 7. Start typing heartbeat + runJob with crash-retry
     const typing = startTypingIndicator(ctx);

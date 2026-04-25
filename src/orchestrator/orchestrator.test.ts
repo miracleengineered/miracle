@@ -9,10 +9,7 @@ import {
   type NotebookClient,
 } from "../notebook/client.js";
 import type { Correlator } from "../correlation/correlator.js";
-import {
-  captureWorkerSessionIdFromLines,
-  runOrchestrator,
-} from "./index.js";
+import { captureWorkerSessionIdFromLines, runOrchestrator } from "./index.js";
 import type { ChildJobPayload, ParentJobPayload } from "./types.js";
 
 describe("runOrchestrator", () => {
@@ -151,9 +148,7 @@ describe("runOrchestrator", () => {
     });
 
     expect(sessionId).toBe("session-first");
-    expect(registerCalls).toEqual([
-      { jobId: "job-stream", sessionId: "session-first" },
-    ]);
+    expect(registerCalls).toEqual([{ jobId: "job-stream", sessionId: "session-first" }]);
   });
 
   it("wires worker stdout capture and retires child mappings when jobs go terminal", async () => {
@@ -186,9 +181,7 @@ describe("runOrchestrator", () => {
           baseClient.updateStatus(job.id, "completed", `${job.id} done`);
         });
         return {
-          stdout: Readable.from([
-            `{"session_id":"session-for-${job.id}","type":"assistant"}\n`,
-          ]),
+          stdout: Readable.from([`{"session_id":"session-for-${job.id}","type":"assistant"}\n`]),
         };
       },
     });

@@ -34,7 +34,7 @@ async function downloadVideo(ctx: Context): Promise<string> {
 
   // Download
   const response = await fetch(
-    `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+    `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`,
   );
   const buffer = await response.arrayBuffer();
   writeFileSync(videoPath, Buffer.from(buffer));
@@ -64,9 +64,7 @@ export async function handleVideo(ctx: Context): Promise<void> {
 
   // 2. Check file size
   if (video.file_size && video.file_size > MAX_VIDEO_SIZE) {
-    await ctx.reply(
-      `❌ Video too large. Maximum size is ${MAX_VIDEO_SIZE / 1024 / 1024}MB.`
-    );
+    await ctx.reply(`❌ Video too large. Maximum size is ${MAX_VIDEO_SIZE / 1024 / 1024}MB.`);
     return;
   }
 
@@ -74,9 +72,7 @@ export async function handleVideo(ctx: Context): Promise<void> {
   const [allowed, retryAfter] = rateLimiter.check(userId);
   if (!allowed) {
     await auditLogRateLimit(userId, username, retryAfter!);
-    await ctx.reply(
-      `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-    );
+    await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
     return;
   }
 
@@ -90,11 +86,7 @@ export async function handleVideo(ctx: Context): Promise<void> {
     videoPath = await downloadVideo(ctx);
   } catch (error) {
     console.error("Failed to download video:", error);
-    await ctx.api.editMessageText(
-      chatId,
-      statusMsg.message_id,
-      "❌ Failed to download video."
-    );
+    await ctx.api.editMessageText(chatId, statusMsg.message_id, "❌ Failed to download video.");
     return;
   }
 
@@ -104,11 +96,7 @@ export async function handleVideo(ctx: Context): Promise<void> {
 
   try {
     // Update status
-    await ctx.api.editMessageText(
-      chatId,
-      statusMsg.message_id,
-      "📹 Processing video..."
-    );
+    await ctx.api.editMessageText(chatId, statusMsg.message_id, "📹 Processing video...");
 
     // Build prompt with video path
     const prompt = caption
@@ -118,8 +106,7 @@ export async function handleVideo(ctx: Context): Promise<void> {
     // Set conversation title (if new session)
     if (!session.isActive) {
       const rawTitle = caption || "[Video]";
-      const title =
-        rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
+      const title = rawTitle.length > 50 ? rawTitle.slice(0, 47) + "..." : rawTitle;
       session.conversationTitle = title;
     }
 
@@ -136,13 +123,15 @@ export async function handleVideo(ctx: Context): Promise<void> {
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     // Delete processing message after response
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
 
     await auditLog(userId, username, "VIDEO", caption || "[video]", response);
 

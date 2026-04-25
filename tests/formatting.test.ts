@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  escapeHtml,
-  convertMarkdownToHtml,
-  formatToolStatus,
-} from "../src/formatting";
+import { escapeHtml, convertMarkdownToHtml, formatToolStatus } from "../src/formatting";
 
 // ============== escapeHtml ==============
 
@@ -13,9 +9,7 @@ describe("escapeHtml", () => {
   });
 
   it("escapes angle brackets", () => {
-    expect(escapeHtml("<script>alert(1)</script>")).toBe(
-      "&lt;script&gt;alert(1)&lt;/script&gt;"
-    );
+    expect(escapeHtml("<script>alert(1)</script>")).toBe("&lt;script&gt;alert(1)&lt;/script&gt;");
   });
 
   it("escapes double quotes", () => {
@@ -27,9 +21,7 @@ describe("escapeHtml", () => {
   });
 
   it("escapes all special chars in one string", () => {
-    expect(escapeHtml('<a href="x">&</a>')).toBe(
-      "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
-    );
+    expect(escapeHtml('<a href="x">&</a>')).toBe("&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;");
   });
 });
 
@@ -54,33 +46,25 @@ describe("convertMarkdownToHtml", () => {
 
   it("converts code blocks to <pre>", () => {
     const input = "```js\nconsole.log(1)\n```";
-    expect(convertMarkdownToHtml(input)).toContain(
-      "<pre>console.log(1)\n</pre>"
-    );
+    expect(convertMarkdownToHtml(input)).toContain("<pre>console.log(1)\n</pre>");
   });
 
   it("converts inline code to <code>", () => {
-    expect(convertMarkdownToHtml("use `foo` here")).toBe(
-      "use <code>foo</code> here"
-    );
+    expect(convertMarkdownToHtml("use `foo` here")).toBe("use <code>foo</code> here");
   });
 
   it("converts links to <a> tags", () => {
     expect(convertMarkdownToHtml("[text](https://example.com)")).toBe(
-      '<a href="https://example.com">text</a>'
+      '<a href="https://example.com">text</a>',
     );
   });
 
   it("converts blockquotes to <blockquote>", () => {
-    expect(convertMarkdownToHtml("> quoted text")).toBe(
-      "<blockquote>quoted text</blockquote>"
-    );
+    expect(convertMarkdownToHtml("> quoted text")).toBe("<blockquote>quoted text</blockquote>");
   });
 
   it("converts bullet lists with - to bullet dots", () => {
-    expect(convertMarkdownToHtml("- item one\n- item two")).toBe(
-      "• item one\n• item two"
-    );
+    expect(convertMarkdownToHtml("- item one\n- item two")).toBe("• item one\n• item two");
   });
 
   it("converts horizontal rules to empty string", () => {
@@ -120,9 +104,7 @@ describe("formatToolStatus", () => {
   });
 
   it("detects jpg images case-insensitively", () => {
-    expect(formatToolStatus("Read", { file_path: "img.JPG" })).toBe(
-      "👀 Viewing"
-    );
+    expect(formatToolStatus("Read", { file_path: "img.JPG" })).toBe("👀 Viewing");
   });
 
   it("formats Write with shortened path", () => {

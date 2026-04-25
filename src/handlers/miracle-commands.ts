@@ -24,15 +24,8 @@ import { session } from "../session";
 import { getSliceDb } from "../miracle/db.js";
 import { runPlanner, PlanValidationError } from "../miracle/planner.js";
 import { gatherCwdContext } from "../miracle/cwd-context.js";
-import {
-  renderApprovalCard,
-  generateNonce,
-} from "../miracle/approval-card.js";
-import {
-  haltAllPlans,
-  haltPlanId,
-  listRunningPlanIds,
-} from "../miracle/executor.js";
+import { renderApprovalCard, generateNonce } from "../miracle/approval-card.js";
+import { haltAllPlans, haltPlanId, listRunningPlanIds } from "../miracle/executor.js";
 
 interface MiraclePlanRow {
   id: string;
@@ -77,17 +70,13 @@ export async function handlePlanCommand(ctx: Context): Promise<void> {
 
   const intent = (ctx.match as string | undefined)?.trim() ?? "";
   if (!intent) {
-    await ctx.reply(
-      "Usage: /plan <topic> — e.g. /plan audit current state of the Genesis repo",
-    );
+    await ctx.reply("Usage: /plan <topic> — e.g. /plan audit current state of the Genesis repo");
     return;
   }
 
   const chatId = sliceChatId();
   if (chatId === null) {
-    await ctx.reply(
-      "MIRACLE_SLICE_CHAT_ID not set. Gate 1 secrets must be in keychain.",
-    );
+    await ctx.reply("MIRACLE_SLICE_CHAT_ID not set. Gate 1 secrets must be in keychain.");
     return;
   }
 
@@ -109,10 +98,7 @@ export async function handlePlanCommand(ctx: Context): Promise<void> {
   // Create a new Topic in the supergroup for this plan.
   let topicId: number | undefined;
   try {
-    const topic = await ctx.api.createForumTopic(
-      chatId,
-      truncateTopicName(intent),
-    );
+    const topic = await ctx.api.createForumTopic(chatId, truncateTopicName(intent));
     topicId = topic.message_thread_id;
   } catch (err) {
     console.warn("/plan: createForumTopic failed (falling back to no-topic)", err);
@@ -268,9 +254,10 @@ export async function handleMiracleCancel(ctx: Context): Promise<void> {
 
   if (row.status === "running") {
     const halted = haltPlanId(row.id);
-    db.prepare(
-      "UPDATE miracle_plans SET status = 'halted', completed_at = ? WHERE id = ?",
-    ).run(Date.now(), row.id);
+    db.prepare("UPDATE miracle_plans SET status = 'halted', completed_at = ? WHERE id = ?").run(
+      Date.now(),
+      row.id,
+    );
     await ctx.reply(
       halted
         ? `🛑 Halted plan ${row.id.slice(0, 8)}.`
@@ -280,9 +267,10 @@ export async function handleMiracleCancel(ctx: Context): Promise<void> {
   }
 
   if (row.status === "pending_approval" || row.status === "editing") {
-    db.prepare(
-      "UPDATE miracle_plans SET status = 'cancelled', completed_at = ? WHERE id = ?",
-    ).run(Date.now(), row.id);
+    db.prepare("UPDATE miracle_plans SET status = 'cancelled', completed_at = ? WHERE id = ?").run(
+      Date.now(),
+      row.id,
+    );
     db.prepare(
       "UPDATE miracle_approvals SET status = 'cancelled' WHERE plan_id = ? AND status = 'pending'",
     ).run(row.id);

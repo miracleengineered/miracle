@@ -6,8 +6,7 @@ import type { NotebookClient } from "../notebook/client.js";
 import type { HookEventPayload, HttpListener, HttpListenerConfig } from "./types.js";
 
 type ListenerLogger = Pick<Console, "warn" | "error">;
-type HookEventNotebookClient = NotebookClient &
-  Required<Pick<NotebookClient, "appendHookEvent">>;
+type HookEventNotebookClient = NotebookClient & Required<Pick<NotebookClient, "appendHookEvent">>;
 
 export interface ExpressHttpListenerConfig extends HttpListenerConfig {
   notebook: HookEventNotebookClient;
@@ -110,16 +109,11 @@ export class ExpressHttpListener implements HttpListener {
   }
 }
 
-export function createHttpListener(
-  config: ExpressHttpListenerConfig,
-): HttpListener {
+export function createHttpListener(config: ExpressHttpListenerConfig): HttpListener {
   return new ExpressHttpListener(config);
 }
 
-function parseHookPayload(
-  bodyText: string,
-  logger: ListenerLogger,
-): HookEventPayload | null {
+function parseHookPayload(bodyText: string, logger: ListenerLogger): HookEventPayload | null {
   if (bodyText.length === 0) {
     logger.warn("Received hook payload with empty body");
     return null;
@@ -138,10 +132,7 @@ function parseHookPayload(
   }
 }
 
-function getSessionId(
-  payload: HookEventPayload | null,
-  logger: ListenerLogger,
-): string {
+function getSessionId(payload: HookEventPayload | null, logger: ListenerLogger): string {
   if (payload && typeof payload.session_id === "string") {
     return payload.session_id;
   }
@@ -150,10 +141,7 @@ function getSessionId(
   return "";
 }
 
-function getEventType(
-  payload: HookEventPayload | null,
-  logger: ListenerLogger,
-): string {
+function getEventType(payload: HookEventPayload | null, logger: ListenerLogger): string {
   if (!payload) {
     logger.warn("Hook payload missing event type; storing empty string");
     return "";

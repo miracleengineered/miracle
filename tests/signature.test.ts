@@ -37,11 +37,7 @@ function userToolResult(tool_use_id: string, is_error: boolean) {
   };
 }
 
-function resultEvent(opts: {
-  is_error?: boolean;
-  subtype?: string;
-  uuid?: string;
-}) {
+function resultEvent(opts: { is_error?: boolean; subtype?: string; uuid?: string }) {
   return {
     type: "result",
     subtype: opts.subtype ?? "success",
@@ -67,18 +63,10 @@ describe("signature routing", () => {
   });
 
   it("Miracle, Engineered. fires on Agent tool_use + matching successful tool_result", () => {
-    const pre = candidatesForEvent(
-      assistantToolUse("toolu_1", "Agent"),
-      SESSION_ID,
-      turnId,
-    );
+    const pre = candidatesForEvent(assistantToolUse("toolu_1", "Agent"), SESSION_ID, turnId);
     expect(pre).toEqual([]);
 
-    const post = candidatesForEvent(
-      userToolResult("toolu_1", false),
-      SESSION_ID,
-      turnId,
-    );
+    const post = candidatesForEvent(userToolResult("toolu_1", false), SESSION_ID, turnId);
     expect(post).toHaveLength(1);
     expect(post[0]!.phrase).toBe(ENGINEERED);
     expect(post[0]!.dedupKey).toBe(`${SESSION_ID}:toolu_1:engineered`);
@@ -92,28 +80,14 @@ describe("signature routing", () => {
   });
 
   it("Miracle, Delivered. uses event.uuid when present (preferred over turnId)", () => {
-    const sigs = candidatesForEvent(
-      resultEvent({ uuid: "result-uuid-xyz" }),
-      SESSION_ID,
-      turnId,
-    );
-    expect(sigs[0]!.dedupKey).toBe(
-      `${SESSION_ID}:result-uuid-xyz:delivered`,
-    );
+    const sigs = candidatesForEvent(resultEvent({ uuid: "result-uuid-xyz" }), SESSION_ID, turnId);
+    expect(sigs[0]!.dedupKey).toBe(`${SESSION_ID}:result-uuid-xyz:delivered`);
   });
 
   it("Miracle, Blocked. fires on is_error: true with a matching Agent tool_use", () => {
-    candidatesForEvent(
-      assistantToolUse("toolu_2", "Agent"),
-      SESSION_ID,
-      turnId,
-    );
+    candidatesForEvent(assistantToolUse("toolu_2", "Agent"), SESSION_ID, turnId);
 
-    const sigs = candidatesForEvent(
-      userToolResult("toolu_2", true),
-      SESSION_ID,
-      turnId,
-    );
+    const sigs = candidatesForEvent(userToolResult("toolu_2", true), SESSION_ID, turnId);
     expect(sigs).toHaveLength(1);
     expect(sigs[0]!.phrase).toBe(BLOCKED);
     expect(sigs[0]!.dedupKey).toBe(`${SESSION_ID}:toolu_2:blocked-sub`);
@@ -127,9 +101,7 @@ describe("signature routing", () => {
     );
     expect(sigs).toHaveLength(1);
     expect(sigs[0]!.phrase).toBe(BLOCKED);
-    expect(sigs[0]!.dedupKey).toBe(
-      `${SESSION_ID}:${turnId}:blocked-outer`,
-    );
+    expect(sigs[0]!.dedupKey).toBe(`${SESSION_ID}:${turnId}:blocked-outer`);
   });
 
   it("candidateForOuterError produces Blocked with turn-scoped key", () => {
@@ -139,30 +111,14 @@ describe("signature routing", () => {
   });
 
   it("ignores non-Agent tool completions (Bash, Read, etc.)", () => {
-    candidatesForEvent(
-      assistantToolUse("toolu_bash", "Bash"),
-      SESSION_ID,
-      turnId,
-    );
-    const sigs = candidatesForEvent(
-      userToolResult("toolu_bash", false),
-      SESSION_ID,
-      turnId,
-    );
+    candidatesForEvent(assistantToolUse("toolu_bash", "Bash"), SESSION_ID, turnId);
+    const sigs = candidatesForEvent(userToolResult("toolu_bash", false), SESSION_ID, turnId);
     expect(sigs).toEqual([]);
   });
 
   it("accepts the legacy tool name 'Task' as equivalent to 'Agent' (pre-2.1.63 rename)", () => {
-    candidatesForEvent(
-      assistantToolUse("toolu_task", "Task"),
-      SESSION_ID,
-      turnId,
-    );
-    const sigs = candidatesForEvent(
-      userToolResult("toolu_task", false),
-      SESSION_ID,
-      turnId,
-    );
+    candidatesForEvent(assistantToolUse("toolu_task", "Task"), SESSION_ID, turnId);
+    const sigs = candidatesForEvent(userToolResult("toolu_task", false), SESSION_ID, turnId);
     expect(sigs).toHaveLength(1);
     expect(sigs[0]!.phrase).toBe(ENGINEERED);
   });
@@ -183,17 +139,9 @@ describe("signature dedup (sessionId + eventId + phrase-tag key composite)", () 
 
   it("replaying the same Agent tool_result does not fire Engineered twice", () => {
     const turnId = "t1";
-    candidatesForEvent(
-      assistantToolUse("toolu_replay", "Agent"),
-      SESSION_ID,
-      turnId,
-    );
+    candidatesForEvent(assistantToolUse("toolu_replay", "Agent"), SESSION_ID, turnId);
 
-    const first = candidatesForEvent(
-      userToolResult("toolu_replay", false),
-      SESSION_ID,
-      turnId,
-    );
+    const first = candidatesForEvent(userToolResult("toolu_replay", false), SESSION_ID, turnId);
     expect(first).toHaveLength(1);
     expect(attemptSend(first[0]!.dedupKey)).toBe(true);
 
@@ -203,31 +151,15 @@ describe("signature dedup (sessionId + eventId + phrase-tag key composite)", () 
 
   it("resetAllSignatureState clears dedup and allows refire in a new session", () => {
     const turnId = "t1";
-    candidatesForEvent(
-      assistantToolUse("toolu_a", "Agent"),
-      SESSION_ID,
-      turnId,
-    );
-    const first = candidatesForEvent(
-      userToolResult("toolu_a", false),
-      SESSION_ID,
-      turnId,
-    );
+    candidatesForEvent(assistantToolUse("toolu_a", "Agent"), SESSION_ID, turnId);
+    const first = candidatesForEvent(userToolResult("toolu_a", false), SESSION_ID, turnId);
     expect(attemptSend(first[0]!.dedupKey)).toBe(true);
 
     resetAllSignatureState();
     const newTurnId = nextTurnId();
 
-    candidatesForEvent(
-      assistantToolUse("toolu_a", "Agent"),
-      SESSION_ID,
-      newTurnId,
-    );
-    const second = candidatesForEvent(
-      userToolResult("toolu_a", false),
-      SESSION_ID,
-      newTurnId,
-    );
+    candidatesForEvent(assistantToolUse("toolu_a", "Agent"), SESSION_ID, newTurnId);
+    const second = candidatesForEvent(userToolResult("toolu_a", false), SESSION_ID, newTurnId);
     expect(attemptSend(second[0]!.dedupKey)).toBe(true);
   });
 });

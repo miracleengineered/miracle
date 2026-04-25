@@ -549,9 +549,7 @@ function deserializeNullableJson(value: string | null): unknown | null {
 
 function extractKind(payload: unknown): string {
   const kind =
-    payload && typeof payload === "object" && "kind" in payload
-      ? payload.kind
-      : undefined;
+    payload && typeof payload === "object" && "kind" in payload ? payload.kind : undefined;
 
   if (typeof kind === "string" && kind.length > 0) {
     return kind;

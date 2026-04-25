@@ -11,11 +11,7 @@ import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  SqliteNotebookClient,
-  createNotebookClient,
-  type NotebookClient,
-} from "./client.js";
+import { SqliteNotebookClient, createNotebookClient, type NotebookClient } from "./client.js";
 import type { HookEventRow, JobRow } from "../types/phase3.js";
 
 type SqliteDatabase = import("better-sqlite3").Database;
@@ -316,9 +312,7 @@ describe("SqliteNotebookClient", () => {
 
       const rows = readHookEvents(dbPath);
       expect(rows.map((r) => r.received_at)).toEqual([
-        1_700_000_000_000,
-        1_700_000_000_001,
-        1_700_000_000_002,
+        1_700_000_000_000, 1_700_000_000_001, 1_700_000_000_002,
       ]);
       expect(rows.every((r) => r.job_id === null)).toBe(true);
     });

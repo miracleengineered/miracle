@@ -171,9 +171,7 @@ describe("subject lookup", () => {
       return {} as any;
     }) as any);
 
-    const prefix = await buildDigestContextPrefix(
-      "where did we leave off on Hub-365",
-    );
+    const prefix = await buildDigestContextPrefix("where did we leave off on Hub-365");
 
     expect(prefix).toContain("[Subject context: Hub-365]");
     expect(prefix).toContain("Hub-365 summary from script");
@@ -190,9 +188,7 @@ describe("subject lookup", () => {
       return {} as any;
     }) as any);
 
-    const prefix = await buildDigestContextPrefix(
-      "where did we leave off on anything",
-    );
+    const prefix = await buildDigestContextPrefix("where did we leave off on anything");
 
     expect(prefix).toBe("");
   });

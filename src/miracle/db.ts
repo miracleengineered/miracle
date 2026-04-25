@@ -31,16 +31,12 @@ let cachedPath: string | null = null;
 function resolveDbPath(env: NodeJS.ProcessEnv = process.env): string {
   const override = env.MIRACLE_SLICE_DB_PATH;
   if (override && override.length > 0) {
-    return override.startsWith("~/")
-      ? resolve(homedir(), override.slice(2))
-      : override;
+    return override.startsWith("~/") ? resolve(homedir(), override.slice(2)) : override;
   }
   return join(homedir(), ".miracle", "slice.db");
 }
 
-export function getSliceDb(
-  env: NodeJS.ProcessEnv = process.env,
-): SqliteDatabase {
+export function getSliceDb(env: NodeJS.ProcessEnv = process.env): SqliteDatabase {
   if (cachedDb) return cachedDb;
 
   const path = resolveDbPath(env);
@@ -64,9 +60,7 @@ export function getSliceDb(
  * so an operator-initiated restart doesn't leave ghost `running` plans on
  * disk. Returns the number of rows updated.
  */
-export function markRunningPlansAsShutdown(
-  env: NodeJS.ProcessEnv = process.env,
-): number {
+export function markRunningPlansAsShutdown(env: NodeJS.ProcessEnv = process.env): number {
   const db = getSliceDb(env);
   const result = db
     .prepare(

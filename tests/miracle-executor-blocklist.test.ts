@@ -35,11 +35,7 @@ describe("Executor blocklist (Gate 2 smoke #8)", () => {
 
   it("denies Bash when pattern is embedded in a longer command", async () => {
     const fn = makeSliceCanUseTool();
-    const result = await fn(
-      "Bash",
-      { command: "cd /tmp && sudo rm -rf /var" },
-      opts,
-    );
+    const result = await fn("Bash", { command: "cd /tmp && sudo rm -rf /var" }, opts);
     expect(result.behavior).toBe("deny");
   });
 
@@ -51,11 +47,7 @@ describe("Executor blocklist (Gate 2 smoke #8)", () => {
 
   it("denies Bash `dd if=...`", async () => {
     const fn = makeSliceCanUseTool();
-    const result = await fn(
-      "Bash",
-      { command: "dd if=/dev/zero of=/dev/sda" },
-      opts,
-    );
+    const result = await fn("Bash", { command: "dd if=/dev/zero of=/dev/sda" }, opts);
     expect(result.behavior).toBe("deny");
   });
 
@@ -76,18 +68,10 @@ describe("Executor blocklist (Gate 2 smoke #8)", () => {
     const read = await fn("Read", { file_path: "/etc/passwd" }, opts);
     expect(read.behavior).toBe("allow");
 
-    const edit = await fn(
-      "Edit",
-      { file_path: "/etc/passwd", new_string: "x" },
-      opts,
-    );
+    const edit = await fn("Edit", { file_path: "/etc/passwd", new_string: "x" }, opts);
     expect(edit.behavior).toBe("allow");
 
-    const write = await fn(
-      "Write",
-      { file_path: "/tmp/x", content: "hi" },
-      opts,
-    );
+    const write = await fn("Write", { file_path: "/tmp/x", content: "hi" }, opts);
     expect(write.behavior).toBe("allow");
   });
 });

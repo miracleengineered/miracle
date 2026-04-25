@@ -38,10 +38,7 @@ async function writeAuditLog(event: AuditEvent): Promise<void> {
       const lines = ["\n" + "=".repeat(60)];
       for (const [key, value] of Object.entries(event)) {
         let displayValue = value;
-        if (
-          (key === "content" || key === "response") &&
-          String(value).length > 500
-        ) {
+        if ((key === "content" || key === "response") && String(value).length > 500) {
           displayValue = String(value).slice(0, 500) + "...";
         }
         lines.push(`${key}: ${displayValue}`);
@@ -62,7 +59,7 @@ export async function auditLog(
   username: string,
   messageType: string,
   content: string,
-  response = ""
+  response = "",
 ): Promise<void> {
   const event: AuditEvent = {
     timestamp: new Date().toISOString(),
@@ -81,7 +78,7 @@ export async function auditLog(
 export async function auditLogAuth(
   userId: number,
   username: string,
-  authorized: boolean
+  authorized: boolean,
 ): Promise<void> {
   await writeAuditLog({
     timestamp: new Date().toISOString(),
@@ -98,7 +95,7 @@ export async function auditLogTool(
   toolName: string,
   toolInput: Record<string, unknown>,
   blocked = false,
-  reason = ""
+  reason = "",
 ): Promise<void> {
   const event: AuditEvent = {
     timestamp: new Date().toISOString(),
@@ -119,7 +116,7 @@ export async function auditLogError(
   userId: number,
   username: string,
   error: string,
-  context = ""
+  context = "",
 ): Promise<void> {
   const event: AuditEvent = {
     timestamp: new Date().toISOString(),
@@ -137,7 +134,7 @@ export async function auditLogError(
 export async function auditLogRateLimit(
   userId: number,
   username: string,
-  retryAfter: number
+  retryAfter: number,
 ): Promise<void> {
   await writeAuditLog({
     timestamp: new Date().toISOString(),
@@ -150,9 +147,7 @@ export async function auditLogRateLimit(
 
 // ============== Voice Transcription ==============
 
-export async function transcribeVoice(
-  filePath: string
-): Promise<string | null> {
+export async function transcribeVoice(filePath: string): Promise<string | null> {
   if (!openaiClient) {
     console.warn("OpenAI client not available for transcription");
     return null;
@@ -182,7 +177,7 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
       model: "tts-1",
       voice: "nova",
       input: text.slice(0, 4096), // OpenAI TTS max input
-      response_format: "opus",    // OGG/Opus — Telegram voice note format
+      response_format: "opus", // OGG/Opus — Telegram voice note format
     });
     return Buffer.from(await response.arrayBuffer());
   } catch (error) {
@@ -212,7 +207,7 @@ export function startTypingIndicator(ctx: Context): TypingController {
   };
 
   // Start the loop
-  loop().catch(err => console.error('[ERROR] Typing indicator loop crashed:', err));
+  loop().catch((err) => console.error("[ERROR] Typing indicator loop crashed:", err));
 
   return {
     stop: () => {

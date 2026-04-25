@@ -11,11 +11,7 @@
  * retry. Costs logged via SDKResultSuccess.total_cost_usd.
  */
 
-import {
-  query,
-  type SDKMessage,
-  type SDKResultSuccess,
-} from "@anthropic-ai/claude-agent-sdk";
+import { query, type SDKMessage, type SDKResultSuccess } from "@anthropic-ai/claude-agent-sdk";
 import { resolveModel } from "../routing/resolveModel.js";
 import { PlanSchema, formatZodError, type Plan } from "./plan-schema.js";
 import { withSliceApiKey } from "./auth.js";

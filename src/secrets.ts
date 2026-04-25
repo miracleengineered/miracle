@@ -81,9 +81,7 @@ function readFromKeychainOptional(service: string): string | undefined {
   }
 }
 
-export function loadSecretsFromKeychain(
-  env: NodeJS.ProcessEnv = process.env,
-): MiracleSecrets {
+export function loadSecretsFromKeychain(env: NodeJS.ProcessEnv = process.env): MiracleSecrets {
   const sliceEnabled = env.MIRACLE_SLICE_ENABLED === "true";
 
   const sliceKey = sliceEnabled
@@ -117,9 +115,7 @@ export function loadSecretsFromKeychain(
   // Also populated into env.MIRACLE_HMAC_SECRET so approval-card.ts can
   // continue reading via process.env — keychain is now the source of truth,
   // plist is stripped (Fix 3.J).
-  const hmacSecret = sliceEnabled
-    ? readFromKeychain(SERVICES.HMAC_SECRET)
-    : undefined;
+  const hmacSecret = sliceEnabled ? readFromKeychain(SERVICES.HMAC_SECRET) : undefined;
   if (hmacSecret) env.MIRACLE_HMAC_SECRET = hmacSecret;
 
   return Object.freeze({

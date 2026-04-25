@@ -17,10 +17,7 @@ export interface Project {
 }
 
 export function resolveRegistryPath(): string {
-  return (
-    process.env.MIRACLE_REGISTRY_PATH ??
-    join(homedir(), "miracle-workspace", "registry.md")
-  );
+  return process.env.MIRACLE_REGISTRY_PATH ?? join(homedir(), "miracle-workspace", "registry.md");
 }
 
 /**

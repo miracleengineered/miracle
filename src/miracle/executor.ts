@@ -286,34 +286,34 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
 
   try {
     try {
-    await withSliceApiKey(async () => {
-      const q = query({
-        prompt: renderProgressPrompt(opts.intent, opts.plan),
-        options: {
-          model,
-          systemPrompt: SLICE_SYSTEM_PROMPT_EXECUTOR,
-          tools: [...opts.plan.tools],
-          maxTurns: opts.maxTurns ?? 80,
-          canUseTool,
-          sessionStore,
-          cwd: opts.cwd,
-          abortController,
-          permissionMode: "bypassPermissions",
-        },
-      });
+      await withSliceApiKey(async () => {
+        const q = query({
+          prompt: renderProgressPrompt(opts.intent, opts.plan),
+          options: {
+            model,
+            systemPrompt: SLICE_SYSTEM_PROMPT_EXECUTOR,
+            tools: [...opts.plan.tools],
+            maxTurns: opts.maxTurns ?? 80,
+            canUseTool,
+            sessionStore,
+            cwd: opts.cwd,
+            abortController,
+            permissionMode: "bypassPermissions",
+          },
+        });
 
-      for await (const msg of q as AsyncIterable<SDKMessage>) {
-        if (msg.type === "result") {
-          if (msg.subtype === "success") {
-            final = msg;
-          } else {
-            lastError = new Error(
-              `Executor ended with subtype: ${(msg as { subtype?: string }).subtype ?? "unknown"}`,
-            );
+        for await (const msg of q as AsyncIterable<SDKMessage>) {
+          if (msg.type === "result") {
+            if (msg.subtype === "success") {
+              final = msg;
+            } else {
+              lastError = new Error(
+                `Executor ended with subtype: ${(msg as { subtype?: string }).subtype ?? "unknown"}`,
+              );
+            }
           }
         }
-      }
-    });
+      });
     } catch (err) {
       lastError = err as Error;
     }
@@ -374,7 +374,9 @@ export async function runExecutor(opts: RunExecutorOptions): Promise<ExecutorRes
       "HTML",
     );
   } else {
-    console.warn(`[BLOCKED] plan=${opts.planId} outcome=${outcome} turns=${turnCount} spend=$${usdSpent.toFixed(4)}`);
+    console.warn(
+      `[BLOCKED] plan=${opts.planId} outcome=${outcome} turns=${turnCount} spend=$${usdSpent.toFixed(4)}`,
+    );
     await sendToTopic(
       opts.bot,
       opts.chatId,

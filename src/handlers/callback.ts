@@ -14,7 +14,15 @@ import { isAuthorized } from "../security";
 import { auditLog, sleep, startTypingIndicator } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
 import { parseRegistry } from "../registry";
-import { GSD_OPERATIONS, parseRoadmap, handleGsd, handleProject, handleResume, handleRetry, sendGsdCommand } from "./commands";
+import {
+  GSD_OPERATIONS,
+  parseRoadmap,
+  handleGsd,
+  handleProject,
+  handleResume,
+  handleRetry,
+  sendGsdCommand,
+} from "./commands";
 
 /**
  * Handle callback queries from inline keyboards.
@@ -57,7 +65,9 @@ export async function handleCallback(ctx: Context): Promise<void> {
   // 2d. Handle gsd-run: — Run a GSD command in the current session
   if (callbackData.startsWith("gsd-run:")) {
     const command = callbackData.replace("gsd-run:", "");
-    try { await ctx.deleteMessage(); } catch {}
+    try {
+      await ctx.deleteMessage();
+    } catch {}
     await ctx.answerCallbackQuery();
     await sendGsdCommand(ctx, command, command, username, userId, chatId);
     return;
@@ -66,7 +76,9 @@ export async function handleCallback(ctx: Context): Promise<void> {
   // 2e. Handle gsd-fresh: — Clear session, then run GSD command
   if (callbackData.startsWith("gsd-fresh:")) {
     const command = callbackData.replace("gsd-fresh:", "");
-    try { await ctx.deleteMessage(); } catch {}
+    try {
+      await ctx.deleteMessage();
+    } catch {}
     await ctx.answerCallbackQuery();
     // Kill session first
     if (session.isRunning) {
@@ -92,7 +104,14 @@ export async function handleCallback(ctx: Context): Promise<void> {
   }
 
   // 2h. Handle GSD phase picker: gsd-{op}:{phase}
-  const gsdPhasePrefixes = ["gsd-exec:", "gsd-plan:", "gsd-discuss:", "gsd-research:", "gsd-verify:", "gsd-remove:"];
+  const gsdPhasePrefixes = [
+    "gsd-exec:",
+    "gsd-plan:",
+    "gsd-discuss:",
+    "gsd-research:",
+    "gsd-verify:",
+    "gsd-remove:",
+  ];
   if (gsdPhasePrefixes.some((p) => callbackData.startsWith(p))) {
     await handleGsdPhaseCallback(ctx, callbackData, chatId);
     return;
@@ -182,7 +201,7 @@ export async function handleCallback(ctx: Context): Promise<void> {
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     await auditLog(userId, username, "CALLBACK", message, response);
@@ -218,7 +237,7 @@ export async function handleCallback(ctx: Context): Promise<void> {
 async function handleActionCallback(
   ctx: Context,
   callbackData: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   const action = callbackData.replace("action:", "");
 
@@ -278,10 +297,7 @@ async function handleActionCallback(
 /**
  * Handle resume session callback (resume:{session_id}).
  */
-async function handleResumeCallback(
-  ctx: Context,
-  callbackData: string
-): Promise<void> {
+async function handleResumeCallback(ctx: Context, callbackData: string): Promise<void> {
   const userId = ctx.from?.id;
   const username = ctx.from?.username || "unknown";
   const chatId = ctx.chat?.id;
@@ -323,14 +339,7 @@ async function handleResumeCallback(
   const statusCallback = createStatusCallback(ctx, state);
 
   try {
-    await session.sendMessageStreaming(
-      recapPrompt,
-      username,
-      userId,
-      statusCallback,
-      chatId,
-      ctx
-    );
+    await session.sendMessageStreaming(recapPrompt, username, userId, statusCallback, chatId, ctx);
   } catch (error) {
     console.error("Error getting recap:", error);
     // Don't show error to user - session is still resumed, recap just failed
@@ -342,10 +351,7 @@ async function handleResumeCallback(
 /**
  * Handle project switch callback (project:{index}).
  */
-async function handleProjectCallback(
-  ctx: Context,
-  callbackData: string
-): Promise<void> {
+async function handleProjectCallback(ctx: Context, callbackData: string): Promise<void> {
   const index = parseInt(callbackData.replace("project:", ""), 10);
 
   // Re-parse registry with same sort order
@@ -395,7 +401,7 @@ async function handleProjectCallback(
   try {
     await ctx.editMessageText(
       `📂 Switched to <b>${project.name}</b>\n<code>${projectPath}</code>`,
-      { parse_mode: "HTML" }
+      { parse_mode: "HTML" },
     );
   } catch (error) {
     console.debug("Failed to edit project message:", error);
@@ -411,7 +417,7 @@ async function handleProjectCallback(
 async function handleOptionCallback(
   ctx: Context,
   callbackData: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   const username = ctx.from?.username || "unknown";
   const userId = ctx.from?.id!;
@@ -446,7 +452,7 @@ const PHASE_PICKER_OPS: Record<string, string> = {
 async function handleGsdCallback(
   ctx: Context,
   callbackData: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   const username = ctx.from?.username || "unknown";
   const userId = ctx.from?.id!;
@@ -488,13 +494,10 @@ async function handleGsdCallback(
     ]);
 
     try {
-      await ctx.editMessageText(
-        `<b>GSD</b> → ${label}\n\nSelect a phase:`,
-        {
-          parse_mode: "HTML",
-          reply_markup: { inline_keyboard: buttons },
-        }
-      );
+      await ctx.editMessageText(`<b>GSD</b> → ${label}\n\nSelect a phase:`, {
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: buttons },
+      });
     } catch (error) {
       console.debug("Failed to edit GSD message:", error);
     }
@@ -535,7 +538,7 @@ const PHASE_CALLBACK_MAP: Record<string, [string, string]> = {
 async function handleGsdPhaseCallback(
   ctx: Context,
   callbackData: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   const username = ctx.from?.username || "unknown";
   const userId = ctx.from?.id!;
@@ -563,4 +566,3 @@ async function handleGsdPhaseCallback(
 
   await sendGsdCommand(ctx, command, label, username, userId, chatId);
 }
-

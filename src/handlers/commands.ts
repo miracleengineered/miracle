@@ -14,11 +14,7 @@ import { auditLog, sleep, startTypingIndicator } from "../utils";
 import { parseRegistry } from "../registry";
 import { searchVault, formatResults, getVaultStatus } from "../vault-search";
 import { StreamingState, createStatusCallback } from "./streaming";
-import {
-  extractGsdCommands,
-  extractNumberedOptions,
-  buildActionKeyboard,
-} from "../formatting";
+import { extractGsdCommands, extractNumberedOptions, buildActionKeyboard } from "../formatting";
 
 /**
  * Parsed phase from ROADMAP.md.
@@ -51,8 +47,7 @@ export function parseRoadmap(workingDir: string): RoadmapPhase[] {
           number: match[2]!,
           name: match[3]!.trim(),
           description: match[4]!.trim(),
-          status:
-            statusChar === "x" ? "done" : statusChar === "~" ? "skipped" : "pending",
+          status: statusChar === "x" ? "done" : statusChar === "~" ? "skipped" : "pending",
         });
       }
 
@@ -61,13 +56,14 @@ export function parseRoadmap(workingDir: string): RoadmapPhase[] {
       if (attempt === 0) {
         // Windows file lock — spin wait and retry
         const start = Date.now();
-        while (Date.now() - start < 200) { /* spin wait */ }
+        while (Date.now() - start < 200) {
+          /* spin wait */
+        }
       }
     }
   }
   return [];
 }
-
 
 /**
  * /start - Show welcome message and status.
@@ -104,7 +100,7 @@ export async function handleStart(ctx: Context): Promise<void> {
       `• Prefix with <code>!</code> to interrupt current query\n` +
       `• Use "think" keyword for extended reasoning\n` +
       `• Send photos, voice, or documents`,
-    { parse_mode: "HTML" }
+    { parse_mode: "HTML" },
   );
 }
 
@@ -195,9 +191,7 @@ export async function handleStatus(ctx: Context): Promise<void> {
 
   // Last activity
   if (session.lastActivity) {
-    const ago = Math.floor(
-      (Date.now() - session.lastActivity.getTime()) / 1000
-    );
+    const ago = Math.floor((Date.now() - session.lastActivity.getTime()) / 1000);
     lines.push(`\n⏱️ Last activity: ${ago}s ago`);
   }
 
@@ -207,12 +201,10 @@ export async function handleStatus(ctx: Context): Promise<void> {
     lines.push(
       `\n📈 Last query usage:`,
       `   Input: ${usage.input_tokens?.toLocaleString() || "?"} tokens`,
-      `   Output: ${usage.output_tokens?.toLocaleString() || "?"} tokens`
+      `   Output: ${usage.output_tokens?.toLocaleString() || "?"} tokens`,
     );
     if (usage.cache_read_input_tokens) {
-      lines.push(
-        `   Cache read: ${usage.cache_read_input_tokens.toLocaleString()}`
-      );
+      lines.push(`   Cache read: ${usage.cache_read_input_tokens.toLocaleString()}`);
     }
   }
 
@@ -297,8 +289,7 @@ export async function handleResume(ctx: Context): Promise<void> {
     });
 
     // Truncate title for button (max ~40 chars to fit)
-    const titlePreview =
-      s.title.length > 35 ? s.title.slice(0, 32) + "..." : s.title;
+    const titlePreview = s.title.length > 35 ? s.title.slice(0, 32) + "..." : s.title;
 
     return [
       {
@@ -339,7 +330,7 @@ export async function handleRestart(ctx: Context): Promise<void> {
           chat_id: chatId,
           message_id: msg.message_id,
           timestamp: Date.now(),
-        })
+        }),
       );
     } catch (e) {
       console.warn("Failed to save restart info:", e);
@@ -373,9 +364,7 @@ export async function handleSearch(ctx: Context): Promise<void> {
 
   const status = getVaultStatus();
   if (!status.available) {
-    await ctx.reply(
-      `Vault search disabled (no basic-memory DB at ${status.path}).`,
-    );
+    await ctx.reply(`Vault search disabled (no basic-memory DB at ${status.path}).`);
     return;
   }
   const results = searchVault(query, 10);
@@ -405,9 +394,7 @@ export async function handleProject(ctx: Context): Promise<void> {
 
   // Find current project name
   const currentDir = session.currentWorkingDir.replace(/\\/g, "/");
-  const currentProject = projects.find(
-    (p) => p.location.replace(/\\/g, "/") === currentDir
-  );
+  const currentProject = projects.find((p) => p.location.replace(/\\/g, "/") === currentDir);
   const currentLabel = currentProject
     ? currentProject.name
     : currentDir.split("/").pop() || currentDir;
@@ -415,8 +402,7 @@ export async function handleProject(ctx: Context): Promise<void> {
   // Build inline keyboard: one button per row
   // Active projects get a star prefix, current project gets a checkmark
   const buttons = projects.map((p, index) => {
-    const isCurrent =
-      p.location.replace(/\\/g, "/") === currentDir;
+    const isCurrent = p.location.replace(/\\/g, "/") === currentDir;
     const isActive = p.status === "Active";
 
     let label = p.name;
@@ -441,7 +427,7 @@ export async function handleProject(ctx: Context): Promise<void> {
       reply_markup: {
         inline_keyboard: buttons,
       },
-    }
+    },
   );
 }
 
@@ -541,15 +527,12 @@ export async function handleGsd(ctx: Context): Promise<void> {
     buttons.push(row);
   }
 
-  await ctx.reply(
-    `<b>GSD</b> — <code>${projectName}</code>${statusText}`,
-    {
-      parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: buttons,
-      },
-    }
-  );
+  await ctx.reply(`<b>GSD</b> — <code>${projectName}</code>${statusText}`, {
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: buttons,
+    },
+  });
 }
 
 // ============== Action Bar Tracking ==============
@@ -574,7 +557,7 @@ export async function sendGsdCommand(
   label: string,
   username: string,
   userId: number,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   // Interrupt any running query
   if (session.isRunning) {
@@ -594,14 +577,13 @@ export async function sendGsdCommand(
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     await auditLog(userId, username, "GSD", command, response);
 
     // Show context bar + contextual keyboard
-    const { commands: gsdCmds, hasClearSuggestion } =
-      extractGsdCommands(response);
+    const { commands: gsdCmds, hasClearSuggestion } = extractGsdCommands(response);
     const numberedOpts = extractNumberedOptions(response);
     const keyboard = buildActionKeyboard({
       gsdCommands: gsdCmds,
@@ -615,9 +597,7 @@ export async function sendGsdCommand(
         ? (() => {
             const clamped = Math.min(pct, 100);
             const filled = Math.min(Math.round(clamped / 10), 10);
-            return (
-              "█".repeat(filled) + "░".repeat(10 - filled) + ` ${clamped}%`
-            );
+            return "█".repeat(filled) + "░".repeat(10 - filled) + ` ${clamped}%`;
           })()
         : null;
 
@@ -645,10 +625,7 @@ export async function sendGsdCommand(
       }
     }
 
-    if (
-      String(error).includes("abort") ||
-      String(error).includes("cancel")
-    ) {
+    if (String(error).includes("abort") || String(error).includes("cancel")) {
       const wasInterrupt = session.consumeInterruptFlag();
       if (!wasInterrupt) {
         await ctx.reply("Query stopped.");
@@ -675,7 +652,7 @@ export async function handleVoiceToggle(ctx: Context): Promise<void> {
   let next: boolean;
   if (arg.startsWith("off")) next = false;
   else if (arg.startsWith("on")) next = true;
-  else next = !session.voiceMode;  // bare /voice toggles
+  else next = !session.voiceMode; // bare /voice toggles
   session.voiceMode = next;
   await ctx.reply(`Voice responses ${next ? "on. I'll reply with audio." : "off."}`);
 }

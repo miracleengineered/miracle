@@ -10,25 +10,11 @@ import { unlinkSync, writeFileSync } from "fs";
 import { session } from "../session";
 import { ALLOWED_USERS, TEMP_DIR, TRANSCRIPTION_AVAILABLE } from "../config";
 import { isAuthorized, rateLimiter } from "../security";
-import {
-  auditLog,
-  auditLogRateLimit,
-  transcribeVoice,
-  startTypingIndicator,
-} from "../utils";
+import { auditLog, auditLogRateLimit, transcribeVoice, startTypingIndicator } from "../utils";
 import { StreamingState, createStatusCallback } from "./streaming";
 
 // Supported audio file extensions
-const AUDIO_EXTENSIONS = [
-  ".mp3",
-  ".m4a",
-  ".ogg",
-  ".wav",
-  ".aac",
-  ".flac",
-  ".opus",
-  ".wma",
-];
+const AUDIO_EXTENSIONS = [".mp3", ".m4a", ".ogg", ".wav", ".aac", ".flac", ".opus", ".wma"];
 
 /**
  * Check if a file is an audio file by extension or mime type.
@@ -53,12 +39,10 @@ export async function processAudioFile(
   caption: string | undefined,
   userId: number,
   username: string,
-  chatId: number
+  chatId: number,
 ): Promise<void> {
   if (!TRANSCRIPTION_AVAILABLE) {
-    await ctx.reply(
-      "Voice transcription is not configured. Set OPENAI_API_KEY in .env"
-    );
+    await ctx.reply("Voice transcription is not configured. Set OPENAI_API_KEY in .env");
     return;
   }
 
@@ -71,37 +55,22 @@ export async function processAudioFile(
 
     const transcript = await transcribeVoice(filePath);
     if (!transcript) {
-      await ctx.api.editMessageText(
-        chatId,
-        statusMsg.message_id,
-        "❌ Transcription failed."
-      );
+      await ctx.api.editMessageText(chatId, statusMsg.message_id, "❌ Transcription failed.");
       return;
     }
 
     // Show transcript
     const maxDisplay = 4000;
     const displayTranscript =
-      transcript.length > maxDisplay
-        ? transcript.slice(0, maxDisplay) + "…"
-        : transcript;
-    await ctx.api.editMessageText(
-      chatId,
-      statusMsg.message_id,
-      `🎤 "${displayTranscript}"`
-    );
+      transcript.length > maxDisplay ? transcript.slice(0, maxDisplay) + "…" : transcript;
+    await ctx.api.editMessageText(chatId, statusMsg.message_id, `🎤 "${displayTranscript}"`);
 
     // Build prompt: transcript + optional caption
-    const prompt = caption
-      ? `${transcript}\n\n---\n\n${caption}`
-      : transcript;
+    const prompt = caption ? `${transcript}\n\n---\n\n${caption}` : transcript;
 
     // Set conversation title (if new session)
     if (!session.isActive) {
-      const title =
-        transcript.length > 50
-          ? transcript.slice(0, 47) + "..."
-          : transcript;
+      const title = transcript.length > 50 ? transcript.slice(0, 47) + "..." : transcript;
       session.conversationTitle = title;
     }
 
@@ -119,13 +88,15 @@ export async function processAudioFile(
       userId,
       statusCallback,
       chatId,
-      ctx
+      ctx,
     );
 
     // Delete processing message after response
     try {
       await ctx.api.deleteMessage(chatId, processingMsg.message_id);
-    } catch { /* already deleted */ }
+    } catch {
+      /* already deleted */
+    }
 
     // Audit log
     await auditLog(userId, username, "AUDIO", transcript, claudeResponse);
@@ -176,9 +147,7 @@ export async function handleAudio(ctx: Context): Promise<void> {
   const [allowed, retryAfter] = rateLimiter.check(userId);
   if (!allowed) {
     await auditLogRateLimit(userId, username, retryAfter!);
-    await ctx.reply(
-      `⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`
-    );
+    await ctx.reply(`⏳ Rate limited. Please wait ${retryAfter!.toFixed(1)} seconds.`);
     return;
   }
 
@@ -193,7 +162,7 @@ export async function handleAudio(ctx: Context): Promise<void> {
     audioPath = `${TEMP_DIR}/audio_${timestamp}.${ext}`;
 
     const response = await fetch(
-      `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+      `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`,
     );
     const buffer = await response.arrayBuffer();
     writeFileSync(audioPath, Buffer.from(buffer));
@@ -204,12 +173,5 @@ export async function handleAudio(ctx: Context): Promise<void> {
   }
 
   // 4. Process audio
-  await processAudioFile(
-    ctx,
-    audioPath,
-    ctx.message?.caption,
-    userId,
-    username,
-    chatId
-  );
+  await processAudioFile(ctx, audioPath, ctx.message?.caption, userId, username, chatId);
 }

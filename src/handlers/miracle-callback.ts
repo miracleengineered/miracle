@@ -91,9 +91,7 @@ export async function handleMiracleCallback(ctx: Context): Promise<void> {
   }
   if (approval.expires_at < Date.now()) {
     // Mark expired so listings reflect it.
-    db.prepare(
-      "UPDATE miracle_approvals SET status = 'expired' WHERE id = ?",
-    ).run(approval.id);
+    db.prepare("UPDATE miracle_approvals SET status = 'expired' WHERE id = ?").run(approval.id);
     await ctx.answerCallbackQuery({ text: "Approval expired (72h).", show_alert: false });
     return;
   }
@@ -112,9 +110,10 @@ export async function handleMiracleCallback(ctx: Context): Promise<void> {
 
   // Mark approval consumed FIRST, atomically. Any downstream failure
   // is logged but doesn't roll this back — the button is single-use.
-  db.prepare(
-    "UPDATE miracle_approvals SET status = ? WHERE id = ?",
-  ).run(verdictToApprovalStatus(verdict), approval.id);
+  db.prepare("UPDATE miracle_approvals SET status = ? WHERE id = ?").run(
+    verdictToApprovalStatus(verdict),
+    approval.id,
+  );
 
   switch (verdict) {
     case "A":
@@ -148,9 +147,7 @@ async function handleApprove(ctx: Context, planRow: PlanRow): Promise<void> {
   // consumed but mark the plan's status as queued-blocked until the
   // running one finishes.
   const running = db
-    .prepare<[], { n: number }>(
-      "SELECT count(*) as n FROM miracle_plans WHERE status = 'running'",
-    )
+    .prepare<[], { n: number }>("SELECT count(*) as n FROM miracle_plans WHERE status = 'running'")
     .get();
 
   if (running && running.n > 0) {
@@ -165,9 +162,11 @@ async function handleApprove(ctx: Context, planRow: PlanRow): Promise<void> {
   }
 
   const now = Date.now();
-  db.prepare(
-    "UPDATE miracle_plans SET status = ?, approved_at = ? WHERE id = ?",
-  ).run("running", now, planRow.id);
+  db.prepare("UPDATE miracle_plans SET status = ?, approved_at = ? WHERE id = ?").run(
+    "running",
+    now,
+    planRow.id,
+  );
 
   await ctx.answerCallbackQuery({ text: "Approved — launching executor.", show_alert: false });
 
@@ -202,9 +201,11 @@ async function handleApprove(ctx: Context, planRow: PlanRow): Promise<void> {
           : result.outcome === "failed_halt"
             ? "halted"
             : result.outcome;
-      db.prepare(
-        "UPDATE miracle_plans SET status = ?, completed_at = ? WHERE id = ?",
-      ).run(finalStatus, Date.now(), planRow.id);
+      db.prepare("UPDATE miracle_plans SET status = ?, completed_at = ? WHERE id = ?").run(
+        finalStatus,
+        Date.now(),
+        planRow.id,
+      );
     })
     .catch((err) => {
       console.error("runExecutor threw:", err);
@@ -223,9 +224,7 @@ async function handleEdit(ctx: Context, planRow: PlanRow): Promise<void> {
     await ctx.api.sendMessage(
       planRow.chat_id,
       "✏️ Reply in this thread with the change you want — I'll re-run the Planner with your feedback.",
-      planRow.topic_id !== null
-        ? { message_thread_id: planRow.topic_id }
-        : {},
+      planRow.topic_id !== null ? { message_thread_id: planRow.topic_id } : {},
     );
   } catch (err) {
     console.warn("handleEdit: sendMessage failed", err);
@@ -234,18 +233,17 @@ async function handleEdit(ctx: Context, planRow: PlanRow): Promise<void> {
 
 async function handleReject(ctx: Context, planRow: PlanRow): Promise<void> {
   const db = getSliceDb();
-  db.prepare(
-    "UPDATE miracle_plans SET status = 'rejected', completed_at = ? WHERE id = ?",
-  ).run(Date.now(), planRow.id);
+  db.prepare("UPDATE miracle_plans SET status = 'rejected', completed_at = ? WHERE id = ?").run(
+    Date.now(),
+    planRow.id,
+  );
 
   await ctx.answerCallbackQuery({ text: "Rejected.", show_alert: false });
   try {
     await ctx.api.sendMessage(
       planRow.chat_id,
       "❌ Plan rejected. Nothing will run.",
-      planRow.topic_id !== null
-        ? { message_thread_id: planRow.topic_id }
-        : {},
+      planRow.topic_id !== null ? { message_thread_id: planRow.topic_id } : {},
     );
   } catch (err) {
     console.warn("handleReject: sendMessage failed", err);

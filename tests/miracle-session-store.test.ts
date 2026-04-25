@@ -103,16 +103,14 @@ describe("SqliteSessionStore", () => {
 
   it("listSessions groups by sessionId within a projectKey and sorts mtime-desc", async () => {
     const store = freshStore();
-    await store.append(
-      { projectKey: "miracle-slice", sessionId: "old" },
-      [{ type: "user", uuid: "o1" }],
-    );
+    await store.append({ projectKey: "miracle-slice", sessionId: "old" }, [
+      { type: "user", uuid: "o1" },
+    ]);
     // Force a distinct mtime.
     await new Promise((r) => setTimeout(r, 3));
-    await store.append(
-      { projectKey: "miracle-slice", sessionId: "new" },
-      [{ type: "user", uuid: "n1" }],
-    );
+    await store.append({ projectKey: "miracle-slice", sessionId: "new" }, [
+      { type: "user", uuid: "n1" },
+    ]);
 
     const sessions = await store.listSessions("miracle-slice");
     expect(sessions.map((s) => s.sessionId)).toEqual(["new", "old"]);
@@ -120,14 +118,12 @@ describe("SqliteSessionStore", () => {
 
   it("listSessions excludes other projectKeys", async () => {
     const store = freshStore();
-    await store.append(
-      { projectKey: "miracle-slice", sessionId: "mine" },
-      [{ type: "user", uuid: "m" }],
-    );
-    await store.append(
-      { projectKey: "other-project", sessionId: "theirs" },
-      [{ type: "user", uuid: "t" }],
-    );
+    await store.append({ projectKey: "miracle-slice", sessionId: "mine" }, [
+      { type: "user", uuid: "m" },
+    ]);
+    await store.append({ projectKey: "other-project", sessionId: "theirs" }, [
+      { type: "user", uuid: "t" },
+    ]);
 
     const mine = await store.listSessions("miracle-slice");
     expect(mine.map((s) => s.sessionId)).toEqual(["mine"]);
@@ -135,18 +131,13 @@ describe("SqliteSessionStore", () => {
 
   it("listSubkeys returns subpaths for a session", async () => {
     const store = freshStore();
-    await store.append(
-      { projectKey: "miracle-slice", sessionId: "s1" },
-      [{ type: "user" }],
-    );
-    await store.append(
-      { projectKey: "miracle-slice", sessionId: "s1", subpath: "agent-1" },
-      [{ type: "user" }],
-    );
-    await store.append(
-      { projectKey: "miracle-slice", sessionId: "s1", subpath: "agent-2" },
-      [{ type: "user" }],
-    );
+    await store.append({ projectKey: "miracle-slice", sessionId: "s1" }, [{ type: "user" }]);
+    await store.append({ projectKey: "miracle-slice", sessionId: "s1", subpath: "agent-1" }, [
+      { type: "user" },
+    ]);
+    await store.append({ projectKey: "miracle-slice", sessionId: "s1", subpath: "agent-2" }, [
+      { type: "user" },
+    ]);
 
     const subkeys = await store.listSubkeys({
       projectKey: "miracle-slice",

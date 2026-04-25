@@ -25,23 +25,11 @@ const ToolNameEnum = z.enum(SLICE_TOOL_NAMES);
 
 export const PlanSchema = z
   .object({
-    title: z
-      .string()
-      .trim()
-      .min(1, "title is required")
-      .max(120, "title must be ≤120 chars"),
-    summary: z
-      .string()
-      .trim()
-      .min(1, "summary is required")
-      .max(400, "summary must be ≤400 chars"),
+    title: z.string().trim().min(1, "title is required").max(120, "title must be ≤120 chars"),
+    summary: z.string().trim().min(1, "summary is required").max(400, "summary must be ≤400 chars"),
     steps: z
       .array(
-        z
-          .string()
-          .trim()
-          .min(1, "step text is required")
-          .max(100, "each step must be ≤100 chars"),
+        z.string().trim().min(1, "step text is required").max(100, "each step must be ≤100 chars"),
       )
       .min(1, "at least one step is required")
       .max(5, "max 5 steps per approval card"),
