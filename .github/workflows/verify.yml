@@ -1,0 +1,51 @@
+name: verify
+
+on:
+  push:
+    branches: [main, miracle-mvp]
+  pull_request:
+    branches: [main, miracle-mvp]
+
+jobs:
+  verify:
+    runs-on: macos-14
+    env:
+      # Bot-specific env-var-stripping is enforced at runtime; CI just
+      # exercises typecheck + tests + scans.
+      SKIP_LIVE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: Install deps (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Install Trivy + gitleaks
+        run: |
+          brew install trivy gitleaks
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Vitest
+        run: bun run test
+
+      - name: Trivy HIGH/CRITICAL scan
+        run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --skip-dirs node_modules .
+
+      - name: Gitleaks scan
+        run: gitleaks detect --source . --no-git --exit-code 1
+
+      - name: Generate SBOM
+        run: trivy fs --format cyclonedx --output sbom.json --skip-dirs node_modules .
+
+      # T2.5: preflight.sh wired into CI.
+      # The script is designed to be report-only with `set -uo pipefail` (no -e),
+      # but a hard FAIL still produces non-zero exit. CI surfaces but doesn't
+      # enforce — operator sees the result, not blocked by it.
+      - name: Preflight (report-only)
+        run: bash bin/preflight.sh || echo "preflight reported issues; review log"

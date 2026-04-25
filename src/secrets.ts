@@ -18,6 +18,7 @@ const KEYCHAIN_ACCOUNT = "miracle";
 
 const SERVICES = {
   TELEGRAM_BOT_TOKEN: "miracle-TELEGRAM_BOT_TOKEN",
+  TELEGRAM_BOT_TOKEN_STAGING: "miracle-TELEGRAM_BOT_TOKEN_STAGING",
   TELEGRAM_ALLOWED_USERS: "miracle-TELEGRAM_ALLOWED_USERS",
   ANTHROPIC_API_KEY: "miracle-ANTHROPIC_API_KEY",
   OPENAI_API_KEY: "miracle-OPENAI_API_KEY",
@@ -95,8 +96,18 @@ export function loadSecretsFromKeychain(
   if (sliceKey) env.ANTHROPIC_API_KEY_SLICE = sliceKey;
   if (sliceChatId) env.MIRACLE_SLICE_CHAT_ID = sliceChatId;
 
+  // T2.3: MIRACLE_ENV=staging swaps the bot token to the staging entry
+  // (miracle-TELEGRAM_BOT_TOKEN_STAGING). Default = production.
+  const isStaging = env.MIRACLE_ENV === "staging";
+  const tokenService = isStaging
+    ? SERVICES.TELEGRAM_BOT_TOKEN_STAGING
+    : SERVICES.TELEGRAM_BOT_TOKEN;
+  if (isStaging) {
+    console.log("[secrets] MIRACLE_ENV=staging → using staging bot token");
+  }
+
   const required = {
-    TELEGRAM_BOT_TOKEN: readFromKeychain(SERVICES.TELEGRAM_BOT_TOKEN),
+    TELEGRAM_BOT_TOKEN: readFromKeychain(tokenService),
     TELEGRAM_ALLOWED_USERS: readFromKeychain(SERVICES.TELEGRAM_ALLOWED_USERS),
   };
   const anthropicKey = readFromKeychainOptional(SERVICES.ANTHROPIC_API_KEY);

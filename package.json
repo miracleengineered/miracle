@@ -7,9 +7,12 @@
     "dev": "tsx --watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "fmt": "biome format --write",
+    "fmt:check": "biome format"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.13",
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^22.0.0",
